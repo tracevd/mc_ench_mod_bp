@@ -1,0 +1,25 @@
+{
+	"format_version": "1.12.0",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "ench:craft_obsidian_chestplate"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "pattern": [
+            "# #",
+            "###",
+            "###"
+        ],
+        "key": {
+            "#": {
+                "item": "ench:obsidian_ingot"
+            }
+        },
+        "result": {
+            "item": "ench:obsidian_chestplate",
+            "count": 1
+        }
+    }
+}

@@ -1,0 +1,244 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/bowAndArrow.json",
+          "weight": 5
+        },
+        {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/diamondGear.json",
+          "weight": 3
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/dirt.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/dye.json",
+          "weight": 4
+        },
+        {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/luckyBlocks.json",
+          "weight": 3
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/elytra.json",
+          "weight": 1
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/empty.json",
+          "weight": 7
+        },
+        {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/dragonscale.json",
+          "weight": 1
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/enderPearlEye.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/gems.json",
+          "weight": 4
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/goldenApples.json",
+          "weight": 3
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/goldTools.json",
+          "weight": 7
+        },
+        {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/xpBottle.json",
+          "weight": 3
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/ironGear.json",
+          "weight": 6
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/redFlower.json",
+          "weight": 5
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/redstone.json",
+          "weight": 5
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/stick.json",
+          "weight": 2
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/woodenTools.json",
+          "weight": 6
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/wool.json",
+          "weight": 7
+        },
+        {
+          "type":"loot_table",
+          "name": "loot_tables/blocks/lucky_block/enchantmentTable.json",
+          "weight": 1
+        },
+        {
+          "type":"loot_table",
+          "name": "loot_tables/blocks/lucky_block/necromancyTable.json",
+          "weight": 1
+        },
+        {
+          "type":"loot_table",
+          "name": "loot_tables/blocks/lucky_block/anvil.json",
+          "weight": 3
+        },
+        {
+          "type":"loot_table",
+          "name": "loot_tables/blocks/lucky_block/modSpecific.json",
+          "weight": 2
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/stainedGlass.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/woods.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/sponge.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/music.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/abandoned_mineshaft.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/desert_pyramid.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/end_city_treasure.json",
+          "weight": 3
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/jungle_temple.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/monster_room.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/nether_bridge.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/pillager_outpost.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/shipwreck.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/shipwrecksupply.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/shipwrecktreasure.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/simple_dungeon.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/stronghold_corridor.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/stronghold_crossing.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/stronghold_library.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/underwater_ruin_big.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/underwater_ruin_small.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/village_blacksmith.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/village_two_room_house.json",
+          "weight": 7
+        },
+	      {
+          "type": "loot_table",
+          "name": "loot_tables/chests/woodland_mansion.json",
+          "weight": 7
+        },
+        {
+          "type": "loot_table",
+          "name": "loot_tables/blocks/lucky_block/netheriteIngot.json",
+          "weight": 3
+        }
+      ]
+    }
+  ]
+}

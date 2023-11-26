@@ -1,0 +1,27 @@
+{
+    "pools": [
+		{
+            "rolls": 1,
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "minecraft:red_flower",
+                    "weight": 1,
+                    "functions": [
+                        {
+                            "function": "set_count",
+                            "count": {
+                                "min": 1,
+                                "max": 1
+                            }
+                        },
+                        {
+                            "function": "set_name",
+                            "name": "§r§lI love §4A§6ո§2a§1ƪ"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

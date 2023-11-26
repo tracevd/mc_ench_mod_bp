@@ -1,0 +1,2 @@
+effect @a[hasitem=[{item=ench:dragonscale_helmet,location=slot.armor.head},{item=ench:dragonscale_chestplate,location=slot.armor.chest},{item=ench:dragonscale_leggings,location=slot.armor.legs},{item=ench:dragonscale_boots,location=slot.armor.feet}]] fire_resistance 15 0 true
+effect @a[hasitem=[{item=ench:dragonscale_helmet,location=slot.armor.head},{item=ench:dragonscale_chestplate,location=slot.armor.chest},{item=ench:dragonscale_leggings,location=slot.armor.legs},{item=ench:dragonscale_boots,location=slot.armor.feet}]] resistance 15 0 true

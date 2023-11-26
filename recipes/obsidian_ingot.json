@@ -1,0 +1,27 @@
+{
+	"format_version": "1.12.0",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "ench:craft_obsidian_ingot"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "pattern": [
+            "#C",
+            "C#"
+        ],
+        "key": {
+            "#": {
+                "item": "minecraft:netherite_ingot"
+            },
+            "C": {
+                "item": "minecraft:crying_obsidian"
+            }
+        },
+        "result": {
+            "item": "ench:obsidian_ingot",
+            "count": 1
+        }
+    }
+}

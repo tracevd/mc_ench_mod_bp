@@ -1,0 +1,1 @@
+effect @s regeneration 2 9 true

@@ -1,0 +1,43 @@
+{
+	"format_version": "1.18.0",
+	"minecraft:item": {
+		"description": {
+			"identifier": "ench:dragonscale_leggings",
+			"category": "equipment"
+		},
+		"components": {
+			"minecraft:display_name": {
+				"value": "Dragon Scale Leggings"
+			},
+			"minecraft:max_stack_size": 1,
+			"minecraft:enchantable": {
+				"value": 100,
+				"slot": "armor_legs"
+			},
+			"minecraft:durability": {
+				"max_durability": 10000,
+				"damage_chance": {
+					"min": 60,
+					"max": 100
+				}
+			},
+			"minecraft:icon": {
+				"texture": "ench_dragonscale_leggings"
+			},
+			"minecraft:render_offsets": "leggings",
+			"minecraft:armor": {
+				"protection": 15,
+				"texture_type": "netherite"
+			},
+			"minecraft:wearable": {
+				"slot": "slot.armor.legs"
+			},
+			"minecraft:creative_category": {
+				"parent": "itemGroup.name.leggings"
+			},
+			"minecraft:knockback_resistance": {
+				"protection": 1
+			}
+		}
+	}
+}

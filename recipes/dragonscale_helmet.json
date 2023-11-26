@@ -1,0 +1,24 @@
+{
+	"format_version": "1.12.0",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "ench:craft_dragonscale_helmet"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "pattern": [
+            "###",
+            "# #"
+        ],
+        "key": {
+            "#": {
+                "item": "ench:dragonscale"
+            }
+        },
+        "result": {
+            "item": "ench:dragonscale_helmet",
+            "count": 1
+        }
+    }
+}

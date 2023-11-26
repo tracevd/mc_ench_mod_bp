@@ -1,0 +1,33 @@
+{
+    "format_version": "1.16.100",
+    "minecraft:block": {
+       "description": {
+          "identifier": "ench:necromancy_table",
+          "menu_category": {
+            "category": "construction",
+            "group": "itemGroup.name.enchantingTable",
+            "is_hidden_in_commands": false
+          },
+          "register_to_creative_menu": true
+       },
+       "components": {
+            "minecraft:material_instances": {
+                "*": {
+                    "texture": "necromancy_table",
+                    "render_method": "alpha_test"
+                }
+            },
+            "minecraft:pick_collision": {
+                "origin":  [-8, 0, -8],
+                "size":    [16, 12, 16]
+            },
+            "minecraft:entity_collision": {
+                "origin":  [-8, 0, -8],
+                "size":    [16, 12, 16]
+            },
+            "minecraft:geometry": "geometry.necromancy_table",
+            "minecraft:destroy_time": 1,
+            "minecraft:block_light_absorption": 0
+       }
+    }
+ }

@@ -1,0 +1,4 @@
+pack.name=Custom Enchants
+pack.description=Adds custom enchants to minecraft
+pack.namespace=custom_enchants
+item.custom_enchants:ectoplasm=Ectoplasm
