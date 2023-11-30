@@ -86,8 +86,6 @@ export function parseWeaponSpells( player, hitEntity, damage )
 
     util.print( "Damage: " + ( extraDamage + damage ) );
 
-    util.print( popup_str[ 0 ] );
-
     if ( popup_str[ 0 ].length > 0 )
     {
         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
