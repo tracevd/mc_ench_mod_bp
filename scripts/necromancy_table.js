@@ -3,375 +3,28 @@ import { ActionFormData } from "@minecraft/server-ui";
 
 import { createShockwave } from "./shockwave";
 
-/**
- * @param { String } num 
- */
-function romanNumeralToNumber( num )
-{
-    if ( num == "I" )
-        return 1;
+import * as util from './util.js';
+import { getLoreItem, getSpellTier, coolDownHasFinished, filter, isCorrupted, loreIncludes, loreTypeToSpellTier, numberToRomanNumeral, romanNumeralToNumber, roundToNearestTenth, secondsToTicks, startCoolDown } from './spells/util.js';
+import * as spells from './spells/spells.js';
 
-    if ( num == "III" )
-        return 3;
-
-    if ( num == "V" )
-        return 5;
-
-    if ( num == "X" )
-        return 10;
-
-    return 1;
-}
-
-function numberToRomanNumeral( num )
-{
-    switch( num )
-    {
-    case 1:
-        return "I";
-    case 3:
-        return "III";
-    case 5:
-        return "V";
-    case 10:
-        return "X";
-    }
-    return "I";
-}
-
-/**
- * @param { string[] } lore_
- * @param { string } item
- */
-function filter( lore_, item )
-{
-    return lore_.filter( element => element.includes( item ) );
-}
-
-/**
- * @param { string[] } lore_ 
- * @param { string } item 
- */
-function loreIncludes( lore_, item )
-{
-    return filter( lore_, item ).length > 0;
-}
-
-/**
- * @param { string[] } lore_ 
- * @param { string } item 
- */
-function getLoreItem( lore_, item )
-{
-    return filter( lore_, item )[ 0 ];
-}
-
-const RESET         = "§r";
-const BLACK         = "§0";
-const DARK_BLUE     = "§1";
-const DARK_GREEN    = "§2";
-const DARK_AQUA     = "§3";
-const DARK_RED      = "§4";
-const DARK_PURPLE   = "§5";
-const GOLD          = "§6";
-const GREY          = "§7";
-const DARK_GREY     = "§8";
-const BLUE          = "§9";
-const GREEN         = "§a";
-const AQUA          = "§b";
-const RED           = "§c";
-const LIGHT_PURPLE  = "§d";
-const YELLOW        = "§e";
-const WHITE         = "§f";
-
-// **********************************************
-//                  Weapon Spells
-// **********************************************
-
-// Damages enemies and scatters them
-const GROUNDPOUND       = `${RESET}${GOLD}Ground Pound `;
-// Summons lightning on hit
-const LIGHTNING         = `${RESET}${YELLOW}Lightning`;
-// Explodes on hit
-const EXPLODING         = `${RESET}${RED}Exploding`;
-// Causes enemies to float in the and take fall damage
-const LEVITATING        = `${RESET}${AQUA}Levitating `;
-// Adds health to the player
-const LIFESTEAL         = `${RESET}${DARK_PURPLE}Lifesteal `;
-// Poisons nearby enemies
-const POISON            = `${RESET}${GREEN}Poison `;
-// Adds absorption for a brief time
-const ABSORBING         = `${RESET}${DARK_RED}Absorbing`;
-// Withers nearby enemies
-const WITHER            = `${RESET}${BLACK}Wither `;
-// Damages nearby enemies
-const CRITICAL_STRIKE   = `${RESET}${DARK_BLUE}Critical Strike `;
-// Slows nearby enemies
-const SLOWING           = `${RESET}${GREY}Slowing `;
-// Disables some effects
-const CORRUPTION        = `${RESET}${LIGHT_PURPLE}Corruption `;
-
-// **********************************************
-//                 Armor Spells
-// **********************************************
-
-// Chance to remove fire effect
-const EXTINGUISH    = `${RESET}${DARK_AQUA}Extinguish `;
-// Deal some damage back to enemies when taking damage
-const REFLECT       = `${RESET}${DARK_PURPLE}Reflect `;
-// When about to die, gain boosts to keep you in the fight
-const LASTSTAND     = `${RESET}${GOLD}Last Stand`;
-// Chance to remove poison effects
-const IMMUNITY      = `${RESET}${DARK_GREEN}Immunity `;
-// Gain resistance 1 while wearing
-const STEADFAST     = `${RESET}${DARK_GREY}Steadfast`;
-// Grants health boost
-const RESILIENCE    = `${RESET}${DARK_BLUE}Resilience `;
-// Gives jump boost
-const LEAPING       = `${RESET}${GREEN}Leaping`;
-// Gives jump boost
-const STAMPEDE      = `${RESET}${AQUA}Stampede`;
-// Slows nearby enemies
-const INTIMIDATION  = `${RESET}${RED}Intimidation `;
-
-
-// **********************************************
-//                 Bow Spells
-// **********************************************
-
-// Gives target poison when hit
-const POISON_BOW    = POISON;
-// Gives targer wither when hit
-const WITHER_BOW    = WITHER;
-// Makes arrows explode on impact
-const EXPLODING_BOW = EXPLODING;
-
-const SHARPENED_BOW = `${RESET}${DARK_GREY}Sharpened Arrows `;
-
-// **********************************************
-//                 Pick Spells
-// **********************************************
-
-const DRILL       = `${RESET}${RED}Drill`;
-
-
-
-
-const CORRUPTED_TAG = '    123';
-
-
-function isCorrupted( player )
-{
-    if ( !( player instanceof Player ) )
-        return false;
-
-    const type_s = CORRUPTED_TAG.substring( 4, 7 );
-
-    return player.hasTag( type_s );
-}
-
-/**
- * @param { Player } player
- * @param { string } type
- * @param { Number } seconds
- */
-function startCoolDown( player, type, seconds )
-{
-    const type_s = type.substring( 4, 7 );
-    player.addTag( type_s );
-    system.runTimeout( () =>
-    {
-        player.removeTag( type_s );
-    }, seconds * 20 );
-}
-
-function coolDownHasFinished( player, type )
-{
-    const type_s = type.substring( 4, 7 );
-    return !( player.hasTag( type_s ) );
-}
-
-function getSpellTier( item, type )
-{
-    return romanNumeralToNumber( item.substring( type.length ) );
-}
-
-function loreTypeToSpellTier( lore, type )
-{
-    const item = getLoreItem( lore, type );
-    return getSpellTier( item, type );
-}
-
-function roundToNearestTenth( num )
-{
-    return Math.round( num * 10 ) / 10;
-}
-
-function activate_criticalStrike( player, hitEntity, lore, damage, popup_str )
-{
-    if ( !coolDownHasFinished( player, CRITICAL_STRIKE ) )
-        return;
-
-    const rand = Math.random();
-
-    const lore_item = getLoreItem( lore, CRITICAL_STRIKE );
-    const spell_tier = getSpellTier( lore_item, CRITICAL_STRIKE );
-
-    if ( rand < ( spell_tier + 15 ) / 50 )
-        return;
-
-    popup_str[ 0 ] = popup_str[ 0 ] + lore_item + '\n';
-
-    hitEntity.applyDamage( damage * 0.3 * spell_tier / 7 );
-}
-
-function activate_poison( player, hitEntity, lore, popup_str )
-{
-    if ( !coolDownHasFinished( player, POISON ) )
-        return;
-
-    const lore_item = getLoreItem( lore, POISON );
-    const spell_tier = getSpellTier( lore_item, POISON );
-    popup_str[0] = popup_str[0] + lore_item + '\n';
-    hitEntity.runCommandAsync(`effect @s[type=!item,type=!xp_orb] poison ${1+Math.floor(spell_tier/3)} ${spell_tier == 10 ? 2 : spell_tier == 5 ? 1 : 0}`);
-    startCoolDown( player, POISON, 15 );
-}
-
-function activate_wither( player, hitEntity, lore, popup_str )
-{
-    if ( !coolDownHasFinished( player, WITHER ) )
-        return;
-
-    const lore_item = getLoreItem( lore, WITHER );
-    const spell_tier = getSpellTier( lore_item, WITHER );
-    popup_str[0] = popup_str[0] + lore_item + '\n';
-    hitEntity.runCommandAsync(`effect @s[type=!item,type=!xp_orb] wither ${1+Math.floor(spell_tier/3)} ${spell_tier == 10 ? 2 : spell_tier == 5 ? 1 : 0 }`);
-    startCoolDown( player, WITHER, 20 );
-}
-
-function activate_groundPound( player, lore, popup_str )
-{
-    const velo = player.getVelocity().y * -1;
-    if ( velo <= 0 || !coolDownHasFinished( player, GROUNDPOUND ) )
-        return;
-
-    const lore_item = getLoreItem( lore, GROUNDPOUND );
-    const spell_tier = getSpellTier( lore_item, GROUNDPOUND );
-    popup_str[0] = popup_str[0] + lore_item + '\n';
-    const strength_multiplier = roundToNearestTenth( ( 0.9 + velo ) ** 3 );
-    const radius = spell_tier * velo / 2 + spell_tier - spell_tier / 7;
-    const strength = spell_tier * strength_multiplier ** 0.5;
-    if ( createShockwave( player, player.location, strength, radius, strength_multiplier ) )
-        startCoolDown( player, GROUNDPOUND, 10 );
-}
-
-function activate_exploding( player, hitEntity, popup_str )
-{
-    if ( !coolDownHasFinished( player, EXPLODING ) )
-        return;
-
-    popup_str[ 0 ] = popup_str[ 0 ] + EXPLODING + '\n';
-    hitEntity.dimension.createExplosion( hitEntity.location, 4, { breaksBlocks: false, source: player } );
-    startCoolDown( player, EXPLODING, 15 );
-}
-
-function activate_absorbing( player, popup_str )
-{
-    if ( !coolDownHasFinished( player, ABSORBING ) )
-        return;
-
-    startCoolDown( player, ABSORBING, 2 );
-
-    const rand = Math.random();
-    if ( rand < 0.5 )
-        return;
-
-    popup_str[ 0 ] = popup_str[ 0 ] + ABSORBING + '\n';
-    player.runCommandAsync("effect @s absorption 2 0 true");
-}
-
-function activate_lifesteal( player, lore, damage, popup_str )
-{
-    if ( !coolDownHasFinished( player, LIFESTEAL ) )
-        return;
-
-    startCoolDown( player, LIFESTEAL, 4 );
-
-    const rand = Math.random();
-    if ( rand < 0.5 )
-        return;
-    const lore_item = getLoreItem( lore, LIFESTEAL );
-    const spell_tier = getSpellTier( lore_item, LIFESTEAL );
-    popup_str[ 0 ] = popup_str[ 0 ] + lore_item + '\n';
-    const health = player.getComponent("health");
-    const multiplier = (spell_tier / 33) + 0.2;
-    let health_stolen = damage * multiplier;
-    if ( isNaN( health_stolen ) )
-        health_stolen = 0;
-    let current = health.currentValue;
-    if ( isNaN( current ) )
-        current = 0;
-    health.setCurrentValue( current + ( health_stolen > 2 ? 2 : health_stolen ) );
-}
-
-function activate_slowing( player, hitEntity, lore, popup_str )
-{
-    if ( !coolDownHasFinished( player, SLOWING ) )
-        return;
-
-    const lore_item = getLoreItem( lore, SLOWING );
-    const spell_tier = getSpellTier( lore_item, SLOWING );
-    popup_str[ 0 ] = popup_str[ 0 ] + lore_item + '\n';
-    const time_ = Math.ceil( spell_tier / 4 );
-    const time = time_ < 1 ? 1 : time_;
-    hitEntity.runCommandAsync(
-        `effect @s[type=!item,type=!xp_orb] slowness ${ time } ${ ( spell_tier > 5 ? 2 : 1 ) } true`
-    )
-    startCoolDown( player, SLOWING, 5 );
-}
-
-function activate_lightning( player, hitEntity, popup_str )
-{
-    if ( !coolDownHasFinished( player, LIGHTNING ) )
-        return;
-    
-    popup_str[ 0 ] = popup_str[ 0 ] + LIGHTNING + '\n';
-    hitEntity.applyDamage( 10 );
-    hitEntity.runCommandAsync("summon lightning_bolt");
-    startCoolDown( player, LIGHTNING, 7 );
-}
-
-function activate_levitating( player, hitEntity, lore, popup_str )
-{
-    if ( !coolDownHasFinished( player, LEVITATING ) )
-        return;
-
-    const lore_item = getLoreItem( lore, LEVITATING );
-    const spell_tier = getSpellTier( lore_item, LEVITATING );
-    popup_str[0] = popup_str[0] + lore_item + '\n';
-    hitEntity.runCommandAsync(`effect @s[type=!item,type=!xp_orb] levitation 1 ${(spell_tier)+3} true`);
-    startCoolDown( player, LEVITATING, 7 );
-}
-
-function activate_corruption( player, hitEntity, lore, popup_str )
-{
-    if ( !( hitEntity instanceof Player ) || isCorrupted( hitEntity ) )
-        return;
-    if ( !coolDownHasFinished( player, CORRUPTION ) )
-        return;
-
-    const lore_item = getLoreItem( lore, CORRUPTION );
-    const spell_tier = getSpellTier( lore_item, CORRUPTION );
-    popup_str[ 0 ] = popup_str[ 0 ] + lore_item + '\n';
-    startCoolDown( hitEntity, CORRUPTED_TAG, ( spell_tier == 10 ? 8 : ( spell_tier + 7 ) / 2 ) );
-    hitEntity.onScreenDisplay.setTitle( RESET + LIGHT_PURPLE + "Corrupted", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
-    
-    startCoolDown( player, CORRUPTION, 25 );
-}
+import { WeaponEffect, WeaponEffects } from "./spells/WeaponSpells.js";
 
 function displayTimer( start, end )
 {
     world.sendMessage( "Elapsed ms: " + ( end - start ).toString() );
+}
+
+/**
+ * @param {string} spell 
+ */
+function getBaseSpellAndTier( spell )
+{
+    if ( spell.endsWith('I') || spell.endsWith('X') || spell.endsWith('V') )
+    {
+        const indexOfSpace = spell.lastIndexOf(' ');
+        return { baseSpell: spell.substring( 0, indexOfSpace + 1 ), tier: romanNumeralToNumber( spell.substring( indexOfSpace + 1 ) ) };
+    }
+    return { baseSpell: spell, tier: 0 };
 }
 
 /**
@@ -383,7 +36,10 @@ export function parseWeaponSpells( player, hitEntity, damage )
 {
     if ( isCorrupted( player ) )
     {
-        player.onScreenDisplay.setTitle( "You are Corrupted! Cannot use abilities!", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
+        if ( player instanceof Player )
+        {
+            player.onScreenDisplay.setTitle( "You are Corrupted! Cannot use abilities!", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
+        }
         return;
     }
 
@@ -393,12 +49,20 @@ export function parseWeaponSpells( player, hitEntity, damage )
         return;
     }
 
-    const inv = player.getComponent("inventory");
-    const item = inv.container.getItem( player.selectedSlot );
+    const equip = player.getComponent("equippable");
+
+    if ( equip == null )
+    {
+        util.print( player.typeId + " does not have an equippable component");
+        return;
+    }
+
+    const item = equip.getEquipment( EquipmentSlot.Mainhand );
 
     if ( item == undefined )
         return;
     
+    /** @type {string[]} */
     const lore = item.getLore();
 
     if ( lore == undefined || lore.length == 0 || lore[ 0 ] == undefined )
@@ -406,103 +70,26 @@ export function parseWeaponSpells( player, hitEntity, damage )
         return;
     }
 
-    let numOfSpellsHandled = 0;
-    const numOfSpells = lore.length;
     let popup_str = [""];
 
-    if ( loreIncludes( lore, EXPLODING ) )
+    let extraDamage = 0;
+
+    for ( let i= 0; i < lore.length; ++i )
     {
-        activate_exploding( player, hitEntity, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
+        
+        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
+
+        const effect = WeaponEffects.getEffect( baseSpell );
+
+        extraDamage += effect.activate( { source: player, target: hitEntity, damage: damage }, tier, popup_str );
     }
-    if ( loreIncludes( lore, CRITICAL_STRIKE ) )
+
+    util.print( "Damage: " + ( extraDamage + damage ) );
+
+    util.print( popup_str[ 0 ] );
+
+    if ( popup_str[ 0 ].length > 0 )
     {
-        activate_criticalStrike( player, hitEntity, lore, damage, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, POISON ) )
-    {
-        activate_poison( player, hitEntity, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[0] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, WITHER ) )
-    {
-        activate_wither( player, hitEntity, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[0] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, GROUNDPOUND ) )
-    {
-        activate_groundPound( player, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, ABSORBING ) )
-    {
-        activate_absorbing( player, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, LIFESTEAL ) )
-    {
-        activate_lifesteal( player, lore, damage, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, SLOWING )  )
-    {
-        activate_slowing( player, hitEntity, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, LIGHTNING ) )
-    {
-        activate_lightning( player, hitEntity, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, CORRUPTION ) )
-    {
-        activate_corruption( player, hitEntity, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, LEVITATING ) )
-    {
-        activate_levitating( player, hitEntity, lore, popup_str );
         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
     }
 }
@@ -512,107 +99,118 @@ export function parseWeaponSpells( player, hitEntity, damage )
  * @param { Entity } entity
  * @param { Number } damage
  */
-export function parseArmorSpells( player, entity, damage )
+export function parseArmorSpells( defendingEntity, attackingEntity, damage )
 {
-    if ( isCorrupted( player ) )
+    if ( isCorrupted( defendingEntity ) )
     {
         return;
     }
 
-    const tags = player.getTags();
+    const armorInfo = entityArmorMap.get( defendingEntity.id );
 
-    if ( loreIncludes( tags, REFLECT ) && entity != undefined )
+    if ( armorInfo == null )
+        return;
+
+    const spells_ = armorInfo.getNonCallbackSpells();
+
+    if ( spells_.length == 0 )
     {
-        const spell_tier = loreTypeToSpellTier( tags, REFLECT );
+        util.print("Empty list");
+        return;
+    }
+
+    if ( loreIncludes( spells_, spells.REFLECT ) && attackingEntity != undefined )
+    {
+        const spell_tier = loreTypeToSpellTier( spells_, spells.REFLECT );
         const dmg = roundToNearestTenth( damage * 0.1 * ( spell_tier / 3 ) ) + 1;
         world.sendMessage( "Reflected: " + dmg.toString() );
-        entity.applyDamage( dmg );
+        attackingEntity.applyDamage( dmg );
     }
-    if ( loreIncludes( tags, LASTSTAND ) && coolDownHasFinished( player, LASTSTAND ) )
+    if ( loreIncludes( spells_, spells.LASTSTAND ) && coolDownHasFinished( defendingEntity, spells.LASTSTAND ) )
     {
-        const health = player.getComponent( "health" );
+        const health = defendingEntity.getComponent( "health" );
         if ( health.current < 2 )
         {
-            player.runCommandAsync( "effect @s strength 10 0" );
-            player.runCommandAsync( "effect @s absorption 10 4 true" );
-            player.runCommandAsync( "effect @s regeneration 2 0 true" );
-            startCoolDown( player, LASTSTAND, 180 );
+            defendingEntity.runCommandAsync( "effect @s strength 10 0" );
+            defendingEntity.runCommandAsync( "effect @s absorption 10 4 true" );
+            defendingEntity.runCommandAsync( "effect @s regeneration 2 0 true" );
+            startCoolDown( defendingEntity, spells.LASTSTAND, 180 );
         }
     }
 }
 
 function activate_sharpenedArrow( player, hitEntity, lore, popup_str )
 {
-    if ( !coolDownHasFinished( player, SHARPENED_BOW ) )
+    if ( !coolDownHasFinished( player, spells.SHARPENED_BOW ) )
         return;
 
-    const spell_tier = loreTypeToSpellTier( lore, SHARPENED_BOW );
+    const spell_tier = loreTypeToSpellTier( lore, spells.SHARPENED_BOW );
 
     let dmg = spell_tier / 3;
     dmg += 1.5;
     dmg *= 2;
     
-    popup_str[ 0 ] = popup_str[ 0 ] + SHARPENED_BOW + '\n';
+    popup_str[ 0 ] = popup_str[ 0 ] + spells.SHARPENED_BOW + '\n';
     hitEntity.applyDamage( dmg );
-    startCoolDown( player, SHARPENED_BOW, 7 );
+    startCoolDown( player, spells.SHARPENED_BOW, 7 );
 }
 
 export function parseBowSpells( player, hitEntity )
 {
-    if ( isCorrupted( player ) )
-        return;
+    // if ( isCorrupted( player ) )
+    //     return;
 
-    const inv = player.getComponent("inventory");
-    if ( inv == undefined || inv.container == undefined )
-        return;
-    const bow = inv.container.getItem( player.selectedSlot );
+    // const inv = player.getComponent("inventory");
+    // if ( inv == undefined || inv.container == undefined )
+    //     return;
+    // const bow = inv.container.getItem( player.selectedSlot );
 
-    if ( bow == undefined || !bow.typeId.endsWith('bow') )
-        return;
+    // if ( bow == undefined || !bow.typeId.endsWith('bow') )
+    //     return;
     
-    const lore = bow.getLore();
+    // const lore = bow.getLore();
 
-    if ( lore == undefined || lore.length == 0 || lore[ 0 ] == undefined )
-    {
-        return;
-    }
+    // if ( lore == undefined || lore.length == 0 || lore[ 0 ] == undefined )
+    // {
+    //     return;
+    // }
 
-    let numOfSpellsHandled = 0;
-    const numOfSpells = lore.length;
-    let popup_str = [""];
+    // let numOfSpellsHandled = 0;
+    // const numOfSpells = lore.length;
+    // let popup_str = [""];
 
-    if ( loreIncludes( lore, EXPLODING ) )
-    {
-        activate_exploding( player, hitEntity, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, POISON_BOW ) )
-    {
-        activate_poison( player, hitEntity, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, WITHER_BOW ) )
-    {
-        activate_wither( player, hitEntity, lore, popup_str );
-        if ( ++numOfSpellsHandled == numOfSpells )
-        {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-            return;
-        }
-    }
-    if ( loreIncludes( lore, SHARPENED_BOW ) )
-    {
-        activate_sharpenedArrow( player, hitEntity, lore, popup_str );
-        player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    }
+    // if ( loreIncludes( lore, spells.EXPLODING ) )
+    // {
+    //     activate_exploding( player, hitEntity, popup_str );
+    //     if ( ++numOfSpellsHandled == numOfSpells )
+    //     {
+    //         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+    //         return;
+    //     }
+    // }
+    // if ( loreIncludes( lore, spells.POISON_BOW ) )
+    // {
+    //     activate_poison( player, hitEntity, lore, popup_str );
+    //     if ( ++numOfSpellsHandled == numOfSpells )
+    //     {
+    //         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+    //         return;
+    //     }
+    // }
+    // if ( loreIncludes( lore, spells.WITHER_BOW ) )
+    // {
+    //     activate_wither( player, hitEntity, lore, popup_str );
+    //     if ( ++numOfSpellsHandled == numOfSpells )
+    //     {
+    //         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+    //         return;
+    //     }
+    // }
+    // if ( loreIncludes( lore, SHARPENED_BOW ) )
+    // {
+    //     activate_sharpenedArrow( player, hitEntity, lore, popup_str );
+    //     player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+    // }
 }
 
 export function parsePickaxeSpells( player, pickaxe, blockLocation )
@@ -677,72 +275,72 @@ function getWeaponLoreToAdd( lore_, spell_tier )
         case 0:
         {
             if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, GROUNDPOUND ) ) continue;
-            lore_to_add = GROUNDPOUND + spell_tier_str;
+            if ( loreIncludes( lore_, spells.GROUNDPOUND ) ) continue;
+            lore_to_add = spells.GROUNDPOUND + spell_tier_str;
             break;
         }
         case 1:
         {
             if ( spell_tier < 10 ) continue;
-            if ( loreIncludes( lore_, LIGHTNING ) ) continue;
-            lore_to_add = LIGHTNING;
+            if ( loreIncludes( lore_, spells.LIGHTNING ) ) continue;
+            lore_to_add = spells.LIGHTNING;
             break;
         }
         case 2:
         {
             if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, EXPLODING ) ) continue;
-            lore_to_add = EXPLODING;
+            if ( loreIncludes( lore_, spells.EXPLODING ) ) continue;
+            lore_to_add = spells.EXPLODING;
             break;
         }
         case 3:
         {
-            if ( loreIncludes( lore_, LEVITATING ) ) continue;
-            lore_to_add = LEVITATING + spell_tier_str;
+            if ( loreIncludes( lore_, spells.LEVITATING ) ) continue;
+            lore_to_add = spells.LEVITATING + spell_tier_str;
             break;
         }
         case 4:
         {
-            if ( loreIncludes( lore_, LIFESTEAL ) ) continue;
-            lore_to_add = LIFESTEAL + spell_tier_str;
+            if ( loreIncludes( lore_, spells.LIFESTEAL ) ) continue;
+            lore_to_add = spells.LIFESTEAL + spell_tier_str;
             break;
         }
         case 5:
         {
-            if ( loreIncludes( lore_, POISON ) ) continue;
-            lore_to_add = POISON + spell_tier_str;
+            if ( loreIncludes( lore_, spells.POISON ) ) continue;
+            lore_to_add = spells.POISON + spell_tier_str;
             break;
         }
         case 6:
         {
             if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, ABSORBING ) ) continue;
-            lore_to_add = ABSORBING;
+            if ( loreIncludes( lore_, spells.ABSORBING ) ) continue;
+            lore_to_add = spells.ABSORBING;
             break;
         }
         case 7:
         {
             if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, WITHER ) ) continue;
-            lore_to_add = WITHER + spell_tier_str;
+            if ( loreIncludes( lore_, spells.WITHER ) ) continue;
+            lore_to_add = spells.WITHER + spell_tier_str;
             break;
         }
         case 8:
         {
-            if ( loreIncludes( lore_, CRITICAL_STRIKE ) ) continue;
-            lore_to_add = CRITICAL_STRIKE + spell_tier_str;
+            if ( loreIncludes( lore_, spells.CRITICAL_STRIKE ) ) continue;
+            lore_to_add = spells.CRITICAL_STRIKE + spell_tier_str;
             break;
         }
         case 9:
         {
-            if ( loreIncludes( lore_, CORRUPTION ) ) continue;
-            lore_to_add = CORRUPTION + spell_tier_str;
+            if ( loreIncludes( lore_, spells.CORRUPTION ) ) continue;
+            lore_to_add = spells.CORRUPTION + spell_tier_str;
             break;
         }
         case 9:
         {
-            if ( loreIncludes( lore_, SLOWING ) ) continue;
-            lore_to_add = SLOWING + spell_tier_str;
+            if ( loreIncludes( lore_, spells.SLOWING ) ) continue;
+            lore_to_add = spells.SLOWING + spell_tier_str;
             break;
         }
         }
@@ -791,11 +389,11 @@ function getArmorLoreToAdd( spell_tier )
             {
                 if ( random_number < 12.5 )
                 {
-                    return STAMPEDE;
+                    return spells.STAMPEDE;
                 }
                 else
                 {
-                    return EXTINGUISH + spell_tier_str;
+                    return spells.EXTINGUISH + spell_tier_str;
                 }
             }
             else // 25 - 50
@@ -804,7 +402,7 @@ function getArmorLoreToAdd( spell_tier )
                 {
                     if ( spell_tier < 5 )
                         continue;
-                    return LEAPING;
+                    return spells.LEAPING;
                 }
                 else
                 {
@@ -812,11 +410,11 @@ function getArmorLoreToAdd( spell_tier )
                             continue;
                     if ( random_number < 42.5 )
                     {
-                        return INTIMIDATION + spell_tier_str;
+                        return spells.INTIMIDATION + spell_tier_str;
                     }
                     else
                     {
-                        return LASTSTAND;
+                        return spells.LASTSTAND;
                     }
                 }
             } 
@@ -827,11 +425,11 @@ function getArmorLoreToAdd( spell_tier )
             {
                 if ( random_number < 62.5 )
                 {
-                    return REFLECT + spell_tier_str;
+                    return spells.REFLECT + spell_tier_str;
                 }
                 else
                 {
-                    return IMMUNITY + spell_tier_str;
+                    return spells.IMMUNITY + spell_tier_str;
                 }
             }
             else // 75 - 100
@@ -840,11 +438,11 @@ function getArmorLoreToAdd( spell_tier )
                 {
                     if ( spell_tier < 5 )
                         continue;
-                    return STEADFAST;
+                    return spells.STEADFAST;
                 }
                 else
                 {
-                    return RESILIENCE + spell_tier_str;
+                    return spells.RESILIENCE + spell_tier_str;
                 }
             }
         }
@@ -884,30 +482,30 @@ function getBowLoreToAdd( lore_, spell_tier )
         {
             if ( random_number < 25 )
             {
-                if ( loreIncludes( lore_, POISON_BOW ) )
+                if ( loreIncludes( lore_, spells.POISON_BOW ) )
                     continue;
-                return POISON_BOW + spell_tier_str;
+                return spells.POISON_BOW + spell_tier_str;
             }
             else
             {
-                if ( loreIncludes( lore_, WITHER_BOW ) )
+                if ( loreIncludes( lore_, spells.WITHER_BOW ) )
                     continue;
-                return WITHER_BOW + spell_tier_str;
+                return spells.WITHER_BOW + spell_tier_str;
             }
         }
         else
         {
             if ( random_number > 70 )
             {
-                if ( loreIncludes( lore_, SHARPENED_BOW ) )
+                if ( loreIncludes( lore_, spells.SHARPENED_BOW ) )
                     continue;
-                return SHARPENED_BOW + spell_tier_str;
+                return spells.SHARPENED_BOW + spell_tier_str;
             }
             else
             {
-                if ( loreIncludes( lore_, EXPLODING_BOW ) )
+                if ( loreIncludes( lore_, spells.EXPLODING_BOW ) )
                     continue;
-                return EXPLODING_BOW;
+                return spells.EXPLODING_BOW;
             }
         }
     }
@@ -942,9 +540,9 @@ function getPickaxeLoreToAdd( lore_, spell_tier )
     {
         const random_number = Math.floor( Math.random() * 100 );
 
-        if ( loreIncludes( lore_, DRILL ) )
+        if ( loreIncludes( lore_, spells.DRILL ) )
             continue;
-        return DRILL;
+        return spells.DRILL;
     }
     return "";
 }
@@ -1115,12 +713,12 @@ function addArmorEffect( player, armor )
     
     const effect = lore[ 0 ];
 
-    if ( loreIncludes( lore, LEAPING ) )
+    if ( loreIncludes( lore, spells.LEAPING ) )
     {
         player.runCommandAsync( "effect @s jump_boost 9999 1 true" );
         return { ptr, isPtr };
     }
-    if ( loreIncludes( lore, STAMPEDE ) )
+    if ( loreIncludes( lore, spells.STAMPEDE ) )
     {
         let lastSwiftness = -1;
         const id = system.runInterval( () =>
@@ -1142,15 +740,15 @@ function addArmorEffect( player, armor )
                     {
                         player.removeTag( "stampcooldown" );
                         ++lastSwiftness;
-                    }, 20 * 3 );
+                    }, secondsToTicks( 3 ) );
                 }
             }                              
         }, 30 );
         return { ptr: id, isPtr: true };
     }
-    if ( loreIncludes( lore, EXTINGUISH ) )
+    if ( loreIncludes( lore, spells.EXTINGUISH ) )
     {
-        const spell_tier = loreTypeToSpellTier( lore, EXTINGUISH );
+        const spell_tier = loreTypeToSpellTier( lore, spells.EXTINGUISH );
         const id = system.runInterval( () =>
         {
             if ( player.getComponent( "minecraft:onfire" ) == undefined )
@@ -1160,23 +758,21 @@ function addArmorEffect( player, armor )
             {
                 player.extinguishFire( false );
             }
-        }, 50 );
+        }, secondsToTicks( 1 ) );
 
         return { ptr: id, isPtr: true };
     }
-    if ( loreIncludes( lore, REFLECT ) )
+    if ( loreIncludes( lore, spells.REFLECT ) )
     {
-        player.addTag( effect );
         return { ptr, isPtr };
     }
-    if ( loreIncludes( lore, LASTSTAND ) )
+    if ( loreIncludes( lore, spells.LASTSTAND ) )
     {
-        player.addTag( effect );
         return { ptr, isPtr };
     }
-    if ( loreIncludes( lore, IMMUNITY ) )
+    if ( loreIncludes( lore, spells.IMMUNITY ) )
     {
-        const spell_tier = loreTypeToSpellTier( lore, IMMUNITY );
+        const spell_tier = loreTypeToSpellTier( lore, spells.IMMUNITY );
         const id = system.runInterval( () =>
         {
             
@@ -1186,26 +782,26 @@ function addArmorEffect( player, armor )
                 if ( rand < spell_tier / 15 )
                     player.runCommandAsync( "effect @s poison 0" );
             }
-        }, 32 );
+        }, secondsToTicks( 1.5 ) );
 
         return { ptr: id, isPtr: true };
     }
-    if ( loreIncludes( lore, STEADFAST ) )
+    if ( loreIncludes( lore, spells.STEADFAST ) )
     {
         player.runCommandAsync( "effect @s resistance 9999 0 true" );
         return { ptr, isPtr };
     }
-    if ( loreIncludes( lore, RESILIENCE ) )
+    if ( loreIncludes( lore, spells.RESILIENCE ) )
     {
-        const spell_tier = loreTypeToSpellTier( lore, RESILIENCE );
+        const spell_tier = loreTypeToSpellTier( lore, spells.RESILIENCE );
         const amplifier = Math.ceil( spell_tier / 2 ) - 1;
         player.runCommandAsync( "effect @s health_boost 9999 " + amplifier.toString() + " true" );
         player.runCommandAsync( "effect @s regeneration 1 9 true" );
         return { ptr, isPtr };
     }
-    if ( loreIncludes( lore, INTIMIDATION ) )
+    if ( loreIncludes( lore, spells.INTIMIDATION ) )
     {
-        const spell_tier = loreTypeToSpellTier( lore, INTIMIDATION );
+        const spell_tier = loreTypeToSpellTier( lore, spells.INTIMIDATION );
         const range = Math.floor( spell_tier / 3 ) + 3;
         const dimension = player.dimension;
         const id = system.runInterval( () =>
@@ -1217,7 +813,7 @@ function addArmorEffect( player, armor )
                 entities[ i ].runCommandAsync( `effect @s nausea ${ Math.ceil( spell_tier / 2 ) } ${ Math.floor( spell_tier / 3 ) }`);
                 entities[ i ].runCommandAsync( `effect @s slowness ${ Math.ceil( spell_tier / 2 ) } 0`);
             }
-        }, 10 * 20 )
+        }, secondsToTicks( 10 ) )
         return { ptr: id, isPtr: true };
     }
     return { ptr, isPtr };
@@ -1234,123 +830,317 @@ export function itemIsNotArmor( item )
     return !itemIsArmor( item );
 }
 
-const HELMET_SLOT  = 0;
-const CHEST_SLOT   = 1;
-const LEGGING_SLOT = 2;
-const BOOT_SLOT    = 3;
-
-function getArmorSlot( armor )
+class EntityArmor
 {
-    const type = armor.typeId;
-    if ( type.includes("helm") )
-        return HELMET_SLOT;
-    if ( type.includes("boot") )
-        return BOOT_SLOT;
-    if ( type.includes("legg") )
-        return LEGGING_SLOT;
-    return CHEST_SLOT;
-}
+    static deadTag = "dead";
 
-const interval_function_map =
-new Map(
-[
-    [ "", [ 0 ] ] 
-]);
-interval_function_map.clear();
-
-const player_armor_count =
-new Map(
-[
-    [ "", 0 ] 
-]);
-player_armor_count.clear();
-
-function clearAllPlayerCallBacks( player )
-{
-    const func_ptrs = interval_function_map.get( player.name );
-
-    if ( func_ptrs == undefined )
-        return;
-
-    for ( let i = 0; i < func_ptrs.length; i++ )
-        system.clearRun( func_ptrs[ i ] );
-}
-
-export function reset( player )
-{
-    player_armor_count.set( player.name, 0 );
-
-    clearAllPlayerCallBacks( player );
-
-    interval_function_map.set( player.name, [] );
-
-    const tags = player.getTags();
-
-    system.run( () => {
-        tags.forEach( tag => player.removeTag( tag ) );
-    });
-
-    player.runCommandAsync( "effect @s clear" );
-    player.sendMessage( "You have been reset" );
-}
-
-/**
- * 
- * @param { Player } player 
- * @param { Number } slot 
- */
-function playerHasArmorInSlot( player, slot )
-{
-    const armor_slots = player_armor_count.get( player.name );
-    switch ( slot )
+    constructor( entity )
     {
-    case HELMET_SLOT:  return ( armor_slots & 0b0001 ) != 0;
-    case CHEST_SLOT:   return ( armor_slots & 0b0010 ) != 0;
-    case LEGGING_SLOT: return ( armor_slots & 0b0100 ) != 0;
-    case BOOT_SLOT:    return ( armor_slots & 0b1000 ) != 0;
-    }
-    return false;
-}
-
-/**
- * 
- * @param { Player } player 
- * @param { Number } slot 
- */
-function addArmorInSlotFlag( player, slot )
-{
-    switch ( slot )
-    {
-    case HELMET_SLOT:  player_armor_count.set( player.name, player_armor_count.get( player.name ) | 0b0001 );  break;
-    case CHEST_SLOT:   player_armor_count.set( player.name, player_armor_count.get( player.name ) | 0b0010 );  break;
-    case LEGGING_SLOT: player_armor_count.set( player.name, player_armor_count.get( player.name ) | 0b0100 );  break;
-    case BOOT_SLOT:    player_armor_count.set( player.name, player_armor_count.get( player.name ) | 0b1000 );  break;
-    }
-}
-
-export function equipArmorWithLore( player, item )
-{
-    system.runTimeout( () =>
-    {
-        const hand_item = player.getComponent("inventory").container.getItem( player.selectedSlot );
-
-        const armorSlot = getArmorSlot( item );
-
-        const armor_previously_equipped_in_slot = hand_item != undefined || playerHasArmorInSlot( player, armorSlot );
-
-        if ( armor_previously_equipped_in_slot )
+        if ( entity == null )
         {
-            reset( player );
+            return;
         }
 
-        addArmorInSlotFlag( player, armorSlot );
+        this.#entity = entity;
+        this.#callbacks = [null, null, null, null];
 
-        const { ptr, isPtr } = addArmorEffect( player, item );
+        this.#entityCallBack = system.runInterval( () => {
+            if ( this.#entity.hasTag( EntityArmor.deadTag ) )
+            {
+                util.print("entity is dead!");
+                return;
+            }
+
+            const equipment = this.#entity.getComponent('minecraft:equippable');
+
+            if ( equipment == null )
+            {
+                util.print( entity.typeId + " had a null equipment component" );
+            }
+
+            this.#updateArmorSlot( equipment, EquipmentSlot.Head );
+            this.#updateArmorSlot( equipment, EquipmentSlot.Chest );
+            this.#updateArmorSlot( equipment, EquipmentSlot.Legs );
+            this.#updateArmorSlot( equipment, EquipmentSlot.Feet );
+                     
+        }, secondsToTicks( 5 ) );
+    }
+
+    #updateArmorSlot( equipment, slot )
+    {
+        const item = equipment.getEquipment( slot );
+        // const item = containerSlot.getItem();
+        this.updateArmorSpell( item, slot );
+    }
+
+    /**
+     * Returns all spells on a player's armor
+     * @returns { string[] }
+     */
+    getAllSpells()
+    {
+        const ret = [];
+        for ( const val in this.#armorSpells )
+        {
+            if ( val.length > 0 )
+            {
+                ret.push( val );
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * Return all spells that do not have a callback function
+     * @returns { string[] }
+     */
+    getNonCallbackSpells()
+    {
+        const ret = [];
+        for ( let i = 0; i < 4; ++i )
+        {
+            if ( this.#callbacks[ i ] != null && this.#armorSpells[ i ] != "" )
+            {
+                ret.push( this.#armorSpells[ i ] );
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * Set a given armor slot's spell
+     * @param {ItemStack} armor
+     * @param {string} slot 
+     */
+    updateArmorSpell( armor, slot )
+    {
+        const index = EntityArmor.#slotToIndex( slot );
+
+        const lore = armor == null ? "" : armor.getLore()[ 0 ];
+
+        if ( armor != null && this.#armorSpells[ index ] == lore )
+            return;
+
+        this.#removeSpellAt( index );
+
+        if ( armor != null && lore != null )
+        {
+            this.#addSpellAt( index, armor );
+        }
+    }
+
+    /**
+     * Clear a player's armor effects
+     */
+    clear()
+    {
+        for ( let i = 0;i < this.#callbacks.length; ++i )
+        {
+            if ( this.#callbacks[ i ] == null )
+                continue;
+
+            system.clearRun( this.#callbacks[ i ] );
+        }
+
+        system.run( () => {
+            this.#entity.removeTag( EntityArmor.deadTag );
+        })
+        
+        system.clearRun( this.#entityCallBack );
+    }
+
+    entityDied()
+    {
+        this.#entity.addTag( EntityArmor.deadTag );
+    }
+
+    entityRespawned()
+    {
+        this.#entity.removeTag( EntityArmor.deadTag );
+    }
+
+    /**
+     * @param {number} index 
+     */
+    #removeSpellAt( index )
+    {
+        if ( this.#armorSpells[ index ] == "" )
+        {
+            return;
+        }
+
+        if ( this.#callbacks[ index ] != null )
+        {
+            system.clearRun( this.#callbacks[ index ] );
+            this.#callbacks[ index ] = null;
+            this.#armorSpells[ index ] = "";
+            return;
+        }
+
+        const spell = this.#armorSpells[ index ];
+        this.#armorSpells[ index ] = "";
+
+        if ( spell.includes( spells.STEADFAST ) )
+        {
+            this.#entity.runCommandAsync("effect @s resistance 0");
+            return;
+        }
+        if ( spell.includes( spells.LEAPING ) )
+        {
+            this.#entity.runCommandAsync("effect @s jump_boost 0");
+            return;
+        }
+        if ( spell.includes( spells.RESILIENCE ) )
+        {
+            this.#entity.runCommandAsync("effect @s health_boost 0");
+        }
+    }
+
+    /**
+     * @param {string} spell 
+     * @param {number} ignoreIndex 
+     */
+    #alreadyHasSpell( spell, ignoreIndex = -1 )
+    {
+        for ( let i = 0; i < this.#armorSpells.length; ++i )
+        {
+            if ( i == ignoreIndex )
+                continue;
+
+            if ( this.#armorSpells[ i ].substring( 0, 10 ) == spell.substring( 0, 10 ) )
+            {
+                util.print("Already has spell: " + spell );
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param {number} index 
+     * @param {ItemStack} armor 
+     */
+    #addSpellAt( index, armor )
+    {
+        const lore = armor.getLore()[ 0 ];
+
+        if ( this.#alreadyHasSpell( lore ) )
+            return;
+
+        const { ptr, isPtr } = addArmorEffect( this.#entity, armor );
 
         if ( isPtr )
         {
-            const funcs = interval_function_map.get( player.name );
-            funcs.push( ptr );
+            this.#callbacks[ index ] = ptr;
         }
-    }, 1 );
+
+        this.#armorSpells[ index ] = armor.getLore()[ 0 ];
+    }
+
+    static #slotToIndex( slot )
+    {
+        switch ( slot )
+        {
+        case EquipmentSlot.Head:
+            return 0;
+        case EquipmentSlot.Chest:
+            return 1;
+        case EquipmentSlot.Legs:
+            return 2;
+        case EquipmentSlot.Feet:
+            return 3;
+        default:
+            throw new Error("Unknown equipment slot!");
+        }
+    }
+
+    #armorSpells = ["", "", "", ""];
+    #callbacks = [0, 0, 0, null];
+    #entity;
+    #entityCallBack = 0;
+}
+
+/** @type { Map< string, EntityArmor > } */
+const entityArmorMap = new Map();
+
+const nonRemoveableTags = new Set( [ EntityArmor.deadTag ] );
+
+function clearTags( entity )
+{
+    system.run( () => {
+        const tags = entity.getTags();
+        for ( let i = 0; i < tags.length; ++i )
+        {
+            if ( nonRemoveableTags.has( tags[ i ] ) )
+                continue;
+            entity.removeTag( tags[ i ] );
+        }
+    });
+}
+
+export function createArmorChecker( entity )
+{
+    if ( entity == null )
+        world.sendMessage("Null player");
+
+    clearTags( entity );
+
+    const equippable = entity.getComponent("equippable");
+
+    if ( equippable == null )
+    {
+        return;
+    }
+
+    util.print( entity.id );
+
+    entityArmorMap.set( entity.id, new EntityArmor( entity ) );
+}
+
+export function entityDied( entity )
+{
+    if ( entity == null )
+        return;
+
+    const info = entityArmorMap.get( entity.id );
+
+    if ( info == null )
+    {
+        return;
+    }
+
+    info.entityDied();
+}
+
+export function entityRespawned( entity )
+{
+    if ( entity == null )
+        return;
+
+    const info = entityArmorMap.get( entity.id );
+
+    if ( info == null )
+    {
+        return;
+    }
+
+    info.entityRespawned();
+}
+
+export function removeArmorChecker( entity )
+{
+    const info = entityArmorMap.get( entity.id );
+
+    if ( info == null )
+    {
+        clearTags( entity );
+        return;
+    }
+
+    info.clear();
+
+    entityArmorMap.delete( entity.id );
+
+    util.print("Clearing tags");
+    clearTags( entity );
 }

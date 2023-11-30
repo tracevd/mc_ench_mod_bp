@@ -1,19 +1,8 @@
 import * as mc from "@minecraft/server"
 
-import { showNecromancyTable, equipArmorWithLore, reset, itemIsNotArmor, itemIsArmor, parseArmorSpells, parseWeaponSpells, parseBowSpells, parsePickaxeSpells } from "./necromancy_table"
+import * as util from "./util"
 
-function print( msg )
-{
-    mc.world.sendMessage( msg );
-}
-
-function printObjectFields( obj )
-{
-    for ( const field in obj )
-    {
-        print( field + '' );
-    }
-}
+import { showNecromancyTable, itemIsNotArmor, itemIsArmor, parseArmorSpells, parseWeaponSpells, parseBowSpells, parsePickaxeSpells, createArmorChecker, removeArmorChecker, entityDied, entityRespawned } from "./necromancy_table"
 
 mc.system.beforeEvents.watchdogTerminate.subscribe( e =>
 {
@@ -25,6 +14,11 @@ mc.world.afterEvents.entityDie.subscribe( e =>
 {
     if ( e.deadEntity == undefined )
         return;
+
+    if ( e.deadEntity )
+    {
+        entityDied( e.deadEntity );
+    }
 
     if ( !e.deadEntity.typeId.includes('dragon') )
         return;
@@ -38,7 +32,7 @@ mc.world.afterEvents.entityHurt.subscribe( e =>
     if ( e.damageSource.cause == "thorns" || e.damageSource.cause == "entityExplosion" )
         return;
     
-    if ( e.damageSource.damagingEntity != undefined && e.damageSource.damagingEntity instanceof mc.Player )
+    if ( e.damageSource.damagingEntity != undefined )
     {
         parseWeaponSpells( e.damageSource.damagingEntity, e.hurtEntity, e.damage );
     }
@@ -135,15 +129,20 @@ mc.world.afterEvents.itemUse.subscribe( e =>
 
 mc.world.afterEvents.playerSpawn.subscribe( e =>
 {
-    mc.system.runTimeout( () =>
+    if ( e.initialSpawn )
     {
-        reset( e.player );
-    }, 100 );
+        createArmorChecker( e.player );
+    }
+    else
+    {
+        util.print("hello");
+        entityRespawned( e.player );
+    }
 });
 
 mc.world.beforeEvents.playerLeave.subscribe( e =>
 {
-    reset( e.player );
+    removeArmorChecker( e.player );
 });
 
 import { breakLuckyBlock } from "./luckyblock";

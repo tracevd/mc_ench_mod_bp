@@ -79,11 +79,8 @@ export function createShockwave( player, spawnPos, strength, range, multiplier )
     const dimension = player.dimension;
     const entities = dimension.getEntities({ location: spawnPos, maxDistance: range, excludeNames: [player.name], excludeFamilies: ["inanimate"], excludeTypes: ["item"], excludeTags: ["anti_shockwave"] });
 
-    if ( entities.length  < 2 )
-        return false;
-
     // Loop through all nearby entities (not items though)
-    for ( let i = 0; i < entities.length; i++ )
+    for ( let i = 0; i < entities.length; ++i )
     {
         const entity = entities[ i ];
 
