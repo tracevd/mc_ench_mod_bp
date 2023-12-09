@@ -140,3 +140,12 @@ export function roundToNearestTenth( num )
 {
     return Math.round( num * 10 ) / 10;
 }
+
+/**
+ * @param {string[]} outputString 
+ * @param {string} effectName 
+ */
+export function addEffectToOutputString( outputString, effectName )
+{
+    outputString[ 0 ] = outputString[ 0 ] + effectName + '\n';
+}

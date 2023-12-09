@@ -1,260 +1,295 @@
 import * as spells from './spells.js';
 import * as util from './util.js';
 
-import { Player, Entity } from '@minecraft/server';
+import * as mc from '@minecraft/server';
 
 import { createShockwave } from '../shockwave.js';
 
+import { HandheldWeaponEvent } from './Events.js';
+
 export class WeaponEffects
 {
-    /** @type Map< string, WeaponEffect > */
+    /** @type { Map< string, (event, spelltier, outputString) => number } > */
     static #effects = new Map();
 
     /**
-     * @param {WeaponEffect} effect 
+     * @param {(event, spelltier, outputString) => number} activationFunc 
      */
-    static addEffect( effect )
+    static addEffect( name, activationFunc )
     {
-        this.#effects.set( effect.name, effect );
+        this.#effects.set( name, activationFunc );
     }
 
     /**
      * @param {string} name 
+     * @param {HandheldWeaponEvent} event 
+     * @param {number} spelltier 
+     * @param {string[]} outputString 
      */
-    static getEffect( name )
+    static activateEffect( name, event, spelltier, outputString )
     {
-        const effect = this.#effects.get( name );
+        const effect = WeaponEffects.#effects.get( name );
+
         if ( effect == null )
-            throw new Error("Cannot get weapon effect: name");
-        return effect;
+            throw new Error("Cannot get weapon effect: " + name );
+
+        return effect( event, spelltier, outputString );
     }
 }
 
-export class WeaponEffect
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function criticalStrike( event, spelltier, outputString )
 {
-    /**
-     * @param {string} name 
-     * @param {(event, spelltier, popup_str) => number} activation 
-     */
-    constructor( name, activation )
-    {
-        this.name = name;
-        this.#activation = activation;
-    }
+    const rand = Math.random();
 
-    /**
-     * @returns Extra damage done to target
-     */
-    activate( entityHurt, spelltier, popup_str )
-    {
-        return this.#activation( entityHurt, spelltier, popup_str );
-    }
+    if ( rand < ( spelltier + 15 ) / 50 )
+        return 0;
 
-    /** @type {string} */
-    name;
-    /**  */
-    #activation;
+    util.addEffectToOutputString( outputString, spells.CRITICAL_STRIKE );
+
+    const damageAdded = event.damage * 0.3 * spelltier / 7;
+
+    event.target.applyDamage( damageAdded );
+
+    return damageAdded;
 }
 
-WeaponEffects.addEffect( new WeaponEffect(spells.CRITICAL_STRIKE,
-    (event, spelltier, popup_str) =>
-    {
-        const rand = Math.random();
-
-        if ( rand < ( spelltier + 15 ) / 50 )
-            return 0;
-
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.CRITICAL_STRIKE + '\n';
-
-        const damageAdded = event.damage * 0.3 * spelltier / 7;
-
-        event.target.applyDamage( damageAdded );
-
-        return damageAdded;
-    }
-) );
-
-WeaponEffects.addEffect( new WeaponEffect(spells.POISON,
-    (event, spelltier, popup_str) =>
-    {
-        if ( !util.coolDownHasFinished( event.source, spells.POISON ) )
-            return 0;
-
-        popup_str[0] = popup_str[0] + spells.POISON + '\n';
-
-        event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] poison ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0}`);
-        util.startCoolDown( event.source, spells.POISON, 15 );
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function poison( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.POISON ) )
         return 0;
-    }
-));
 
-WeaponEffects.addEffect( new WeaponEffect(spells.WITHER,
-    (event, spelltier, popup_str) =>
-    {
-        if ( !util.coolDownHasFinished( event.source, spells.WITHER ) )
-            return 0;
+    util.addEffectToOutputString( outputString, spells.POISON );
 
-        popup_str[0] = popup_str[0] + spells.WITHER + '\n';
+    event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] poison ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0}`);
+    util.startCoolDown( event.source, spells.POISON, 15 );
+    return 0;
+}
 
-        event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] wither ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0 }`);
-        util.startCoolDown( event.source, spells.WITHER, 20 );
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function wither( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.WITHER ) )
         return 0;
-    }
-));
 
-WeaponEffects.addEffect( new WeaponEffect(spells.GROUNDPOUND,
-    (event, spelltier, popup_str) =>
-    {
-        const velo = event.source.getVelocity().y * -1;
-        if ( velo <= 0 || !util.coolDownHasFinished( event.source, spells.GROUNDPOUND ) )
-            return 0;
+        util.addEffectToOutputString( outputString, spells.WITHER );
 
-        popup_str[0] = popup_str[0] + spells.GROUNDPOUND + '\n';
+    event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] wither ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0 }`);
+    util.startCoolDown( event.source, spells.WITHER, 20 );
+    return 0;
+}
 
-        const strength_multiplier = util.roundToNearestTenth( ( 0.9 + velo ) ** 3 );
-        const radius = spelltier * velo / 2 + spelltier - spelltier / 7;
-        const strength = spelltier * strength_multiplier ** 0.6;
-
-        if ( event.source instanceof Player )
-        {
-            event.source.sendMessage( `Groundpound strength: ${strength.toString()}` );
-            event.source.sendMessage( `Groundpound radius: ${radius.toString()}` );
-        }
-
-        if ( createShockwave( event.source, event.source.location, strength, radius, strength_multiplier ) )
-            util.startCoolDown( event.source, spells.GROUNDPOUND, 10 );
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function groundPound( event, spelltier, outputString )
+{
+    const velo = event.source.getVelocity().y * -1;
+    if ( velo <= 0 || !util.coolDownHasFinished( event.source, spells.GROUNDPOUND ) )
         return 0;
-    }
-));
 
-WeaponEffects.addEffect( new WeaponEffect(spells.EXPLODING,
-    (event, spelltier, popup_str) =>
+    const strength_multiplier = util.roundToNearestTenth( ( 0.9 + velo ) ** 3 );
+    const radius = spelltier * velo / 2 + spelltier - spelltier / 7;
+    const strength = spelltier * strength_multiplier ** 0.6;
+
+    if ( event.source instanceof mc.Player )
     {
-        if ( !util.coolDownHasFinished( event.source, spells.EXPLODING ) )
-            return 0;
-
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.EXPLODING + '\n';
-
-        event.target.dimension.createExplosion( event.target.location, 3, { breaksBlocks: false, source: event.source } );
-        util.startCoolDown( event.source, spells.EXPLODING, 15 );
-        return 0;
+        event.source.sendMessage( `Groundpound strength: ${strength.toString()}` );
+        event.source.sendMessage( `Groundpound radius: ${radius.toString()}` );
     }
-));
 
-WeaponEffects.addEffect( new WeaponEffect(spells.ABSORBING,
-    (event, spelltier, popup_str) =>
+    if ( createShockwave( event.source, event.source.location, strength, radius, strength_multiplier ) )
     {
-        if ( !util.coolDownHasFinished( event.source, spells.ABSORBING ) )
-            return 0;
-
-        const rand = Math.random();
-        if ( rand < 0.5 )
-            return 0;
-
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.ABSORBING + '\n';
-
-        event.source.runCommandAsync("effect @s absorption 3 0 true");
-
-        util.startCoolDown( event.source, spells.ABSORBING, 3 );
-        return 0;
+        util.addEffectToOutputString( outputString, spells.GROUNDPOUND );
+        util.startCoolDown( event.source, spells.GROUNDPOUND, 10 );
     }
-));
-
-WeaponEffects.addEffect( new WeaponEffect(spells.LIFESTEAL,
-    (event, spelltier, popup_str) =>
-    {
-        if ( !util.coolDownHasFinished( event.source, spells.LIFESTEAL ) )
-            return 0;
-
-        const rand = Math.random();
-        if ( rand < 0.5 )
-            return 0;
-
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.LIFESTEAL + '\n';
-
-        const health = event.source.getComponent("health");
-        const multiplier = (spelltier / 33) + 0.2;
-
-        let health_stolen = event.damage * multiplier;
-
-        if ( isNaN( health_stolen ) )
-            health_stolen = 0;
-        let current = health.currentValue;
-        if ( isNaN( current ) )
-            current = 0;
-
-        health.setCurrentValue( current + ( health_stolen > 2 ? 2 : health_stolen ) );
-        util.startCoolDown( event.source, spells.LIFESTEAL, 4 );
-
-        return 0;
-    }
-));
-
-WeaponEffects.addEffect( new WeaponEffect(spells.SLOWING,
-    (event, spelltier, popup_str) =>
-    {
-        if ( !util.coolDownHasFinished( event.source, spells.SLOWING ) )
-            return 0;
-
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.SLOWING + '\n';
-
-        const time_ = Math.ceil( spelltier / 4 );
-        const time = time_ < 1 ? 1 : time_;
-        event.target.runCommandAsync(
-            `effect @s[type=!item,type=!xp_orb] slowness ${ time } ${ ( spelltier > 5 ? 2 : 1 ) } true`
-        )
-        util.startCoolDown( event.source, spells.SLOWING, 7 );
-        return 0;
-    }
-));
-
-WeaponEffects.addEffect( new WeaponEffect(spells.LIGHTNING,
-    (event, spelltier, popup_str) =>
-    {
-        if ( !util.coolDownHasFinished( event.source, spells.LIGHTNING ) )
-            return 0;
-    
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.LIGHTNING + '\n';
-
-        event.target.applyDamage( 10 );
-        event.target.runCommandAsync("summon lightning_bolt");
-        util.startCoolDown( event.source, spells.LIGHTNING, 7 );
-        return 10;
-    }
-));
-
-WeaponEffects.addEffect( new WeaponEffect(spells.LEVITATING,
-    (event, spelltier, popup_str) =>
-    {
-        if ( !util.coolDownHasFinished( event.source, spells.LEVITATING ) )
-            return 0;
-
-        popup_str[0] = popup_str[0] + spells.LEVITATING + '\n';
-
-        event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] levitation 1 ${(spelltier)+3} true`);
-        util.startCoolDown( event.source, spells.LEVITATING, 7 );
-        return 0;
-    }
-));
-
-WeaponEffects.addEffect( new WeaponEffect(spells.CORRUPTION,
-    (event, spelltier, popup_str) =>
-    {
-        if ( util.isCorrupted( event.target ) )
-            return 0;
-        if ( !util.coolDownHasFinished( event.source, spells.CORRUPTION ) )
-            return 0;
-
-        popup_str[ 0 ] = popup_str[ 0 ] + spells.CORRUPTION + '\n';
-
-        util.startCoolDown( event.target, spells.CORRUPTED_TAG, ( spelltier == 10 ? 8 : ( spelltier + 7 ) / 2 ) );
-
-        if ( event.target instanceof Player )
-        {
-            event.target.onScreenDisplay.setTitle( "You have been " + spells.RESET + spells.LIGHT_PURPLE + "Corrupted", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
-        }
         
-        util.startCoolDown( event.source, spells.CORRUPTION, 25 );
+    return 0;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function exploding( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.EXPLODING ) )
         return 0;
+
+    util.addEffectToOutputString( outputString, spells.EXPLODING );
+
+    event.target.dimension.createExplosion( event.target.location, 3, { breaksBlocks: false, source: event.source } );
+    util.startCoolDown( event.source, spells.EXPLODING, 15 );
+    return 0;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function absorbing( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.ABSORBING ) )
+        return 0;
+
+    const rand = Math.random();
+    if ( rand < 0.5 )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.ABSORBING );
+
+    event.source.runCommandAsync("effect @s absorption 3 0 true");
+
+    util.startCoolDown( event.source, spells.ABSORBING, 3 );
+    return 0;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function lifesteal( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.LIFESTEAL ) )
+        return 0;
+
+    const rand = Math.random();
+    if ( rand < 0.5 )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.LIFESTEAL );
+
+    const health = event.source.getComponent("health");
+    const multiplier = (spelltier / 33) + 0.2;
+
+    let health_stolen = event.damage * multiplier;
+
+    if ( isNaN( health_stolen ) )
+        health_stolen = 0;
+    let current = health.currentValue;
+    if ( isNaN( current ) )
+        current = 0;
+
+    health.setCurrentValue( current + ( health_stolen > 2 ? 2 : health_stolen ) );
+    util.startCoolDown( event.source, spells.LIFESTEAL, 4 );
+
+    return 0;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function slowing( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.SLOWING ) )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.SLOWING );
+
+    const time_ = Math.ceil( spelltier / 4 );
+    const time = time_ < 1 ? 1 : time_;
+    event.target.runCommandAsync(
+        `effect @s[type=!item,type=!xp_orb] slowness ${ time } ${ ( spelltier > 5 ? 2 : 1 ) } true`
+    )
+    util.startCoolDown( event.source, spells.SLOWING, 7 );
+    return 0;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function lightning( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.LIGHTNING ) )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.LIGHTNING );
+
+    event.target.applyDamage( 10 );
+    event.target.runCommandAsync("summon lightning_bolt");
+    util.startCoolDown( event.source, spells.LIGHTNING, 7 );
+    return 10;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function levitating( event, spelltier, outputString )
+{
+    if ( !util.coolDownHasFinished( event.source, spells.LEVITATING ) )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.LEVITATING );
+
+    event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] levitation 1 ${(spelltier)+3} true`);
+    util.startCoolDown( event.source, spells.LEVITATING, 7 );
+    return 0;
+}
+
+function isCorruptable( entity )
+{
+    return entity.getComponent("equippable") != null;
+}
+
+/**
+ * @param {HandheldWeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function corruption( event, spelltier, outputString )
+{
+    if ( util.isCorrupted( event.target ) )
+        return 0;
+    if ( !util.coolDownHasFinished( event.source, spells.CORRUPTION ) )
+        return 0;
+    if ( !isCorruptable( event.target ) )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.CORRUPTION );
+
+    util.startCoolDown( event.target, spells.CORRUPTED_TAG, ( spelltier == 10 ? 8 : ( spelltier + 7 ) / 2 ) );
+
+    if ( event.target instanceof mc.Player )
+    {
+        event.target.onScreenDisplay.setTitle( "You have been " + spells.RESET + spells.LIGHT_PURPLE + "Corrupted", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
     }
-));
+    
+    util.startCoolDown( event.source, spells.CORRUPTION, 25 );
+    return 0;
+}
+
+WeaponEffects.addEffect( spells.CRITICAL_STRIKE, criticalStrike );
+WeaponEffects.addEffect( spells.POISON,          poison );
+WeaponEffects.addEffect( spells.WITHER,          wither );
+WeaponEffects.addEffect( spells.GROUNDPOUND,     groundPound );
+WeaponEffects.addEffect( spells.EXPLODING,       exploding );
+WeaponEffects.addEffect( spells.ABSORBING,       absorbing );
+WeaponEffects.addEffect( spells.LIFESTEAL,       lifesteal );
+WeaponEffects.addEffect( spells.SLOWING,         slowing );
+WeaponEffects.addEffect( spells.LIGHTNING,       lightning );
+WeaponEffects.addEffect( spells.LEVITATING,      levitating );
+WeaponEffects.addEffect( spells.CORRUPTION,      corruption );
