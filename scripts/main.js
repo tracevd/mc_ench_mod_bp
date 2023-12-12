@@ -135,7 +135,6 @@ mc.world.afterEvents.playerSpawn.subscribe( e =>
     }
     else
     {
-        util.print("hello");
         entityRespawned( e.player );
     }
 });

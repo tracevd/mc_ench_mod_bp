@@ -2,7 +2,7 @@ import { world, system, Player, Entity, ItemStack, EquipmentSlot } from "@minecr
 import { ActionFormData } from "@minecraft/server-ui";
 
 import * as util from './util.js';
-import { coolDownHasFinished, isCorrupted, loreIncludes, loreTypeToSpellTier, numberToRomanNumeral, romanNumeralToNumber, startCoolDown } from './spells/util.js';
+import { coolDownHasFinished, isCorrupted, loreIncludes, loreTypeToSpellTier, numberToRomanNumeral, romanNumeralToNumber, secondsToTicks, startCoolDown } from './spells/util.js';
 import * as spells from './spells/spells.js';
 
 import { WeaponEffects } from "./spells/WeaponSpells.js";
@@ -39,7 +39,7 @@ export function parseWeaponSpells( player, hitEntity, damage )
     {
         if ( player instanceof Player )
         {
-            player.onScreenDisplay.setTitle( "You are Corrupted! Cannot use abilities!", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
+            player.onScreenDisplay.setTitle( "You are Corrupted! Cannot use abilities!", { fadeInDuration: secondsToTicks( 0.2 ), stayDuration: secondsToTicks( 0.4 ), fadeOutDuration: secondsToTicks( 0.2 ) } );
         }
         return;
     }
@@ -82,7 +82,7 @@ export function parseWeaponSpells( player, hitEntity, damage )
     {
         const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
 
-        const event = new HandheldWeaponEvent( hitEntity, player, damage );
+        const event = new HandheldWeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
 
         extraDamage += WeaponEffects.activateEffect( baseSpell, event, tier, popup_str );
     }
@@ -125,7 +125,7 @@ export function parseArmorSpells( defendingEntity, attackingEntity, damage )
     {
         const { baseSpell, tier } = getBaseSpellAndTier( spells_[ i ] );
 
-        const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage );
+        const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ) );
 
         ArmorSpells.activateEffect( baseSpell, event, tier, popup_str );
     }

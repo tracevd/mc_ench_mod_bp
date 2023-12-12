@@ -2,7 +2,7 @@ import * as mc from '@minecraft/server';
 
 import * as spells from "./spells.js";
 import * as util from "./util.js";
-import { ArmorActivateEvent } from './Events.js';
+import { ArmorActivateEvent, HandheldWeaponEvent } from './Events.js';
 
 import * as io from "../util.js";
 
@@ -11,12 +11,15 @@ const nonRemoveableTags = new Set( [ "dead" ] );
 function clearTags( entity )
 {
     mc.system.run( () => {
-        const tags = entity.getTags();
-        for ( let i = 0; i < tags.length; ++i )
+        if ( entity.isValid() )
         {
-            if ( nonRemoveableTags.has( tags[ i ] ) )
-                continue;
-            entity.removeTag( tags[ i ] );
+            const tags = entity.getTags();
+            for ( let i = 0; i < tags.length; ++i )
+            {
+                if ( nonRemoveableTags.has( tags[ i ] ) )
+                    continue;
+                entity.removeTag( tags[ i ] );
+            }
         }
     });
 }
@@ -208,6 +211,7 @@ class EntityArmor
             if ( equipment == null )
             {
                 io.print( entity.typeId + " had a null equipment component" );
+                return;
             }
 
             this.#updateArmorSlot( equipment, mc.EquipmentSlot.Head );
@@ -289,44 +293,32 @@ class EntityArmor
      */
     clear()
     {
-        for ( let i = 0; i < this.#callbacks.length; ++i )
-        {
-            if ( this.#callbacks[ i ] == null )
-                continue;
-
-            mc.system.clearRun( this.#callbacks[ i ] );
-        }
-
         for ( let i = 0; i < this.#armorSpells.length; ++i )
         {
-            if ( this.#armorSpells[ i ] == "" )
-                continue;
-
-            const { baseSpell } = getBaseSpellAndTier( this.#armorSpells[ i ] );
-
-            if ( ArmorCallBacks.hasDestructor( baseSpell ) )
-            {
-                const destructor = ArmorCallBacks.getDestructionCallback( baseSpell );
-
-                destructor( this.#entity );
-            }
+            this.#removeSpellAt( i );
         }
 
         mc.system.run( () => {
-            this.#entity.removeTag( EntityArmor.deadTag );
-        })
+            if ( this.#entity.isValid() )
+                this.#entity.removeTag( "dead" );
+        });
         
         mc.system.clearRun( this.#entityCallBack );
     }
 
     entityDied()
     {
-        this.#entity.addTag( EntityArmor.deadTag );
+        this.#entity.addTag( "dead" );
+
+        for ( let i = 0; i < this.#armorSpells.length; ++i )
+        {
+            this.#removeSpellAt( i );
+        }
     }
 
     entityRespawned()
     {
-        this.#entity.removeTag( EntityArmor.deadTag );
+        this.#entity.removeTag( "dead" );
     }
 
     /**
@@ -429,7 +421,11 @@ class EntityArmor
 
 // EFFECTS
 
+import * as we from "./WeaponSpells.js";
+
 /**
+ * TODO: Reflected spells may go to any entity that is hitting
+ * them, regardless of who the spell originally came from
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
  * @param {string[]} outputString 
@@ -446,13 +442,39 @@ function reflect( event, spellTier, outputString )
         return;
     }
 
-    util.addEffectToOutputString( outputString, spells.REFLECT );
+    /** @type {string[]} */
+    const reflectableSpells = event.target.getTags()
+        .filter((value) => value.startsWith("reflectable"));
 
-    const dmg = util.roundToNearestTenth( event.damage * ( spellTier * 5 / 100 ) );
+    if ( reflectableSpells.length == 0 )
+    {
+        io.print("Nothing to reflect", event.target);
+        return;
+    }
 
-    io.print("Reflected: " + dmg.toString() );
+    let containsCorruption = false;
 
-    event.source.applyDamage( dmg );
+    for ( let i = 0; i < reflectableSpells.length; ++i )
+    {
+        if ( reflectableSpells[ i ].includes( spells.CORRUPTION ) )
+        {
+            containsCorruption = true;
+        }
+        event.target.removeTag( reflectableSpells[ i ] );
+    }
+
+    if ( !containsCorruption && util.isCorrupted( event.target ) )
+    {
+        return;
+    }
+
+    const toReflect = reflectableSpells[ rand % reflectableSpells.length ].split('~')[ 1 ];
+
+    util.addEffectToOutputString( outputString, spells.REFLECT + spells.RESET +  ": " + toReflect );
+
+    const hhEvent = new HandheldWeaponEvent( event.source, event.target, 0, false, true );
+
+    we.WeaponEffects.activateEffect( toReflect, hhEvent, spellTier, outputString );
 }
 
 /**
@@ -462,20 +484,21 @@ function reflect( event, spellTier, outputString )
  */
 function lastStand( event, spellTier, outputString )
 {
-    if ( !util.coolDownHasFinished( defendingEntity, spells.LASTSTAND ) )
+    if ( !util.coolDownHasFinished( event.target, spells.LASTSTAND ) )
     {
         return;
     }
 
     const health = event.target.getComponent( "health" );
 
-    if ( health.current < 2.5 )
+    if ( health.currentValue < 5 )
     {
+        io.print("Activated last stand");
         util.addEffectToOutputString( outputString, spells.LASTSTAND );
         event.target.runCommandAsync( "effect @s strength 10 0" );
         event.target.runCommandAsync( "effect @s absorption 10 4 true" );
-        event.target.runCommandAsync( "effect @s regeneration 2 0 true" );
-        startCoolDown( event.target, spells.LASTSTAND, 120 );
+        event.target.runCommandAsync( "effect @s regeneration 10 0 true" );
+        util.startCoolDown( event.target, spells.LASTSTAND, 60 );
     }
 }
 
@@ -488,6 +511,11 @@ function createImmunity( entity, spellTier )
 {
     return mc.system.runInterval( () =>
     {
+        if ( util.isCorrupted( entity ) )
+        {
+            return;
+        }
+
         if ( entity.getEffect( 'poison' ) != undefined )
         {
             const rand = Math.random();
@@ -501,9 +529,18 @@ function createExtinguish( entity, spellTier )
 {
     return mc.system.runInterval( () =>
     {
-        if ( entity.getComponent( "minecraft:onfire" ) == undefined )
+        if ( util.isCorrupted( entity ) )
+        {
             return;
+        }
+
+        if ( entity.getComponent( "minecraft:onfire" ) == undefined )
+        {
+            return;
+        }
+
         const rand = Math.random();
+
         if ( rand < spellTier / 15 )
         {
             entity.extinguishFire( false );
@@ -514,10 +551,17 @@ function createExtinguish( entity, spellTier )
 function createIntimidation( entity, spellTier )
 {
     const range = Math.floor( spellTier / 3 ) + 3;
-    const dimension = entity.dimension;
+    
     return mc.system.runInterval( () =>
     {
+        if ( util.isCorrupted( entity ) )
+        {
+            return;
+        }
+
+        const dimension = entity.dimension;
         const entities = dimension.getEntities({ location: entity.location, maxDistance: range, excludeFamilies: ["inanimate"], excludeTypes: ["item"] });
+
         for ( let i = 0; i < entities.length; ++i )
         {
             if ( entities[ i ].id == entity.id )
@@ -568,6 +612,16 @@ function createStampede( entity, spellTier )
 
     return mc.system.runInterval( () =>
     {
+        if ( util.isCorrupted( entity ) )
+        {
+            if ( lastSwiftness >= 0 )
+            {
+                lastSwiftness = -1;
+                entity.runCommandAsync("effect @s speed 0");
+            }
+            return;
+        }
+
         const velocity = entity.getVelocity();
         if ( entity.isSprinting == false || ( Math.abs( velocity.x ) < 0.19 && Math.abs( velocity.z ) < 0.19 ) )
         {
@@ -602,4 +656,4 @@ ArmorCallBacks.addCallBack( spells.INTIMIDATION, new ArmorCallBack( createIntimi
 ArmorCallBacks.addCallBack( spells.STEADFAST, new ArmorCallBack( createSteadfast, destroySteadfast ) );
 ArmorCallBacks.addCallBack( spells.RESILIENCE, new ArmorCallBack( createResilience, destroyResilience ) );
 ArmorCallBacks.addCallBack( spells.LEAPING, new ArmorCallBack( createLeaping, destroyLeaping ) );
-ArmorCallBacks.addCallBack( spells.STAMPEDE, new ArmorCallBack( createStampede ) );
+ArmorCallBacks.addCallBack( spells.STAMPEDE, new ArmorCallBack( createStampede ), destroyStampede );

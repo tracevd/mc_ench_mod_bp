@@ -7,6 +7,18 @@ import { createShockwave } from '../shockwave.js';
 
 import { HandheldWeaponEvent } from './Events.js';
 
+function makeReflectable( entity, effect )
+{
+    entity.addTag("reflectable~" + effect );
+    mc.system.runTimeout( () =>
+    {
+        if ( entity.isValid() )
+        {
+            entity.removeTag("reflectable~" + effect );
+        }
+    }, util.secondsToTicks( 1 ) );
+}
+
 export class WeaponEffects
 {
     /** @type { Map< string, (event, spelltier, outputString) => number } > */
@@ -44,6 +56,9 @@ export class WeaponEffects
  */
 function criticalStrike( event, spelltier, outputString )
 {
+    if ( event.sourceIsCorrupted )
+        return 0;
+
     const rand = Math.random();
 
     if ( rand < ( spelltier + 15 ) / 50 )
@@ -65,12 +80,20 @@ function criticalStrike( event, spelltier, outputString )
  */
 function poison( event, spelltier, outputString )
 {
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.POISON ) )
         return 0;
 
-    util.addEffectToOutputString( outputString, spells.POISON );
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.POISON );
 
-    event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] poison ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0}`);
+    event.target.runCommandAsync(`effect @s poison ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0}`);
+
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.POISON );
+
     util.startCoolDown( event.source, spells.POISON, 15 );
     return 0;
 }
@@ -82,12 +105,20 @@ function poison( event, spelltier, outputString )
  */
 function wither( event, spelltier, outputString )
 {
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.WITHER ) )
         return 0;
 
+    if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.WITHER );
 
-    event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] wither ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0 }`);
+    event.target.runCommandAsync(`effect @s wither ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0 }`);
+
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.WITHER );
+
     util.startCoolDown( event.source, spells.WITHER, 20 );
     return 0;
 }
@@ -99,6 +130,9 @@ function wither( event, spelltier, outputString )
  */
 function groundPound( event, spelltier, outputString )
 {
+    if ( event.sourceIsCorrupted )
+        return 0;
+
     const velo = event.source.getVelocity().y * -1;
     if ( velo <= 0 || !util.coolDownHasFinished( event.source, spells.GROUNDPOUND ) )
         return 0;
@@ -129,12 +163,20 @@ function groundPound( event, spelltier, outputString )
  */
 function exploding( event, spelltier, outputString )
 {
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.EXPLODING ) )
         return 0;
 
-    util.addEffectToOutputString( outputString, spells.EXPLODING );
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.EXPLODING );
 
     event.target.dimension.createExplosion( event.target.location, 3, { breaksBlocks: false, source: event.source } );
+    
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.EXPLODING );
+
     util.startCoolDown( event.source, spells.EXPLODING, 15 );
     return 0;
 }
@@ -146,6 +188,9 @@ function exploding( event, spelltier, outputString )
  */
 function absorbing( event, spelltier, outputString )
 {
+    if ( event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.ABSORBING ) )
         return 0;
 
@@ -168,6 +213,9 @@ function absorbing( event, spelltier, outputString )
  */
 function lifesteal( event, spelltier, outputString )
 {
+    if ( event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.LIFESTEAL ) )
         return 0;
 
@@ -201,16 +249,24 @@ function lifesteal( event, spelltier, outputString )
  */
 function slowing( event, spelltier, outputString )
 {
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.SLOWING ) )
         return 0;
 
-    util.addEffectToOutputString( outputString, spells.SLOWING );
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.SLOWING );
 
     const time_ = Math.ceil( spelltier / 4 );
     const time = time_ < 1 ? 1 : time_;
     event.target.runCommandAsync(
-        `effect @s[type=!item,type=!xp_orb] slowness ${ time } ${ ( spelltier > 5 ? 2 : 1 ) } true`
-    )
+        `effect @s slowness ${ time } ${ ( spelltier > 5 ? 2 : 1 ) } true`
+    );
+
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.SLOWING );
+
     util.startCoolDown( event.source, spells.SLOWING, 7 );
     return 0;
 }
@@ -222,14 +278,23 @@ function slowing( event, spelltier, outputString )
  */
 function lightning( event, spelltier, outputString )
 {
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+
     if ( !util.coolDownHasFinished( event.source, spells.LIGHTNING ) )
         return 0;
 
-    util.addEffectToOutputString( outputString, spells.LIGHTNING );
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.LIGHTNING );
 
     event.target.applyDamage( 10 );
     event.target.runCommandAsync("summon lightning_bolt");
+    
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.LIGHTNING );
+
     util.startCoolDown( event.source, spells.LIGHTNING, 7 );
+
     return 10;
 }
 
@@ -240,12 +305,19 @@ function lightning( event, spelltier, outputString )
  */
 function levitating( event, spelltier, outputString )
 {
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
     if ( !util.coolDownHasFinished( event.source, spells.LEVITATING ) )
         return 0;
 
-    util.addEffectToOutputString( outputString, spells.LEVITATING );
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.LEVITATING );
 
-    event.target.runCommandAsync(`effect @s[type=!item,type=!xp_orb] levitation 1 ${(spelltier)+3} true`);
+    event.target.runCommandAsync(`effect @s levitation 1 ${(spelltier)+3} true`);
+
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.LEVITATING );
+
     util.startCoolDown( event.source, spells.LEVITATING, 7 );
     return 0;
 }
@@ -262,21 +334,25 @@ function isCorruptable( entity )
  */
 function corruption( event, spelltier, outputString )
 {
-    if ( util.isCorrupted( event.target ) )
+    if ( !event.reflected && event.sourceIsCorrupted )
         return 0;
     if ( !util.coolDownHasFinished( event.source, spells.CORRUPTION ) )
         return 0;
     if ( !isCorruptable( event.target ) )
         return 0;
 
-    util.addEffectToOutputString( outputString, spells.CORRUPTION );
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.CORRUPTION );
 
     util.startCoolDown( event.target, spells.CORRUPTED_TAG, ( spelltier == 10 ? 8 : ( spelltier + 7 ) / 2 ) );
 
     if ( event.target instanceof mc.Player )
     {
-        event.target.onScreenDisplay.setTitle( "You have been " + spells.RESET + spells.LIGHT_PURPLE + "Corrupted", { fadeInSeconds: 0.2, staySeconds: 0.4, fadeOutSeconds: 0.2 } );
+        event.target.onScreenDisplay.setTitle( "You have been " + spells.RESET + spells.LIGHT_PURPLE + "Corrupted", { fadeInDuration: util.secondsToTicks( 0.2 ), stayDuration: util.secondsToTicks( 0.5 ), fadeOutDuration: util.secondsToTicks( 0.2 ) } );
     }
+
+    if ( !event.reflected )
+        makeReflectable( event.target, spells.CORRUPTION );
     
     util.startCoolDown( event.source, spells.CORRUPTION, 25 );
     return 0;

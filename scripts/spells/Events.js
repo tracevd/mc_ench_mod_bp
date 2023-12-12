@@ -7,11 +7,13 @@ export class HandheldWeaponEvent
      * @param {mc.Entity} source 
      * @param {number} damage 
      */
-    constructor( target, source, damage )
+    constructor( target, source, damage, sourceIsCorrupted, reflected = false )
     {
         this.target = target;
         this.source = source;
         this.damage = damage;
+        this.sourceIsCorrupted = sourceIsCorrupted;
+        this.reflected = reflected;
     }
 
     /** @type { mc.Entity } */
@@ -22,15 +24,22 @@ export class HandheldWeaponEvent
 
     /** @type { number } */
     damage;
+
+    /** @type { boolean } */
+    reflected;
+
+    /** @type { boolean } */
+    sourceIsCorrupted;
 }
 
 export class ArmorActivateEvent
 {
-    constructor( target, source, damage )
+    constructor( target, source, damage, sourceIsCorrupted )
     {
         this.target = target;
         this.source = source;
         this.damage = damage;
+        this.sourceIsCorrupted = sourceIsCorrupted;
     }
 
     /** @type { mc.Entity } */
@@ -41,4 +50,7 @@ export class ArmorActivateEvent
     
     /** @type { number } */
     damage;
+
+    /** @type { boolean } */
+    sourceIsCorrupted;
 }
