@@ -1,112 +1,173 @@
-import { world, system, Player, Entity, ItemStack, EquipmentSlot } from "@minecraft/server";
-import { ActionFormData } from "@minecraft/server-ui";
+import * as mc from "@minecraft/server";
+import * as mcui from "@minecraft/server-ui";
 
-import * as util from './util.js';
-import { coolDownHasFinished, isCorrupted, loreIncludes, loreTypeToSpellTier, numberToRomanNumeral, romanNumeralToNumber, secondsToTicks, startCoolDown } from './spells/util.js';
+import { getBaseSpellAndTier, isCorrupted, loreIncludes, numberToRomanNumeral, romanNumeralToNumber, secondsToTicks } from './spells/util.js';
 import * as spells from './spells/spells.js';
 
-import { WeaponEffects } from "./spells/WeaponSpells.js";
+import { WeaponEffects, BowEffects, BowReleaseEffects } from "./spells/WeaponSpells.js";
 
-import { ArmorActivateEvent, HandheldWeaponEvent } from "./spells/Events.js";
+import { ArmorActivateEvent, BowReleaseEvent, WeaponEvent } from "./spells/Events.js";
 import { ArmorSpells, initializeEntity, getEntityArmor, removeEntity } from "./spells/ArmorSpells.js";
-
-function displayTimer( start, end )
-{
-    world.sendMessage( "Elapsed ms: " + ( end - start ).toString() );
-}
+import { print } from "./util.js";
+import { RESET } from "./spells/spell_constants.js";
 
 /**
- * @param {string} spell 
- */
-function getBaseSpellAndTier( spell )
-{
-    if ( spell.endsWith('I') || spell.endsWith('X') || spell.endsWith('V') )
-    {
-        const indexOfSpace = spell.lastIndexOf(' ');
-        return { baseSpell: spell.substring( 0, indexOfSpace + 1 ), tier: romanNumeralToNumber( spell.substring( indexOfSpace + 1 ) ) };
-    }
-    return { baseSpell: spell, tier: 0 };
-}
-
-/**
- * @param { Player } player
- * @param { Entity } hitEntity
+ * Activates spells on the item in the player's main hand.
+ * Effects do not activate if the player is corrupted.
+ * 
+ * If the there is no item in the main hand, or the item is a bow,
+ * this function will do nothing.
+ * 
+ * @param { mc.Player } player
+ * @param { mc.Entity } hitEntity
  * @param { Number } damage
+ * @returns { string[] } spells activated that can be reflected
  */
 export function parseWeaponSpells( player, hitEntity, damage )
 {
     if ( isCorrupted( player ) )
     {
-        if ( player instanceof Player )
-        {
-            player.onScreenDisplay.setTitle( "You are Corrupted! Cannot use abilities!", { fadeInDuration: secondsToTicks( 0.2 ), stayDuration: secondsToTicks( 0.4 ), fadeOutDuration: secondsToTicks( 0.2 ) } );
-        }
-        return;
+        return [];
     }
 
     if ( !hitEntity.isValid() )
     {
-        world.sendMessage("Invalid entity");
-        return;
+        mc.world.sendMessage("Invalid entity");
+        return [];
     }
 
     const equip = player.getComponent("equippable");
 
     if ( equip == null )
     {
-        //util.print( player.typeId + " does not have an equippable component");
-        return;
+        // print( player.typeId + " does not have an equippable component");
+        return [];
     }
 
-    const item = equip.getEquipment( EquipmentSlot.Mainhand );
+    const item = equip.getEquipment( mc.EquipmentSlot.Mainhand );
 
     if ( item == undefined )
-        return;
+        return [];
 
     if ( item.typeId.endsWith("bow") )
-        return;
+        return [];
     
     /** @type {string[]} */
     const lore = item.getLore();
 
-    if ( lore == undefined || lore.length == 0 || lore[ 0 ] == undefined )
+    if ( lore.length == 0 || lore[ 0 ] == undefined )
     {
-        return;
+        return [];
     }
 
     let popup_str = [""];
 
     let extraDamage = 0;
 
+    const event = new WeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
+
     for ( let i= 0; i < lore.length; ++i )
     {
         const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
 
-        const event = new HandheldWeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
-
         extraDamage += WeaponEffects.activateEffect( baseSpell, event, tier, popup_str );
     }
 
-    util.print( "Damage: " + ( extraDamage + damage ) );
-
-    if ( popup_str[ 0 ].length > 0 && player instanceof Player )
+    if ( popup_str[ 0 ].length > 0 && player instanceof mc.Player )
     {
         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
     }
+
+    return event.reflectableSpells;
 }
 
 /**
- * @param { Player } player
- * @param { Entity } entity
- * @param { Number } damage
+ * Activates any bow spells on the bow in the source's main hand
+ * that activate on release of a projectile.
+ * 
+ * If the item is not a bow, this does nothing.
+ * 
+ * Effects do not activate if the player is corrupted.
+ * @param { mc.Entity } source 
+ * @param { mc.ItemStack } item
+ * @param { mc.Entity } projectile
  */
-export function parseArmorSpells( defendingEntity, attackingEntity, damage )
+export function releaseProjectile( source, item, projectile )
 {
-    if ( isCorrupted( defendingEntity ) )
+    if ( !item.typeId.includes("bow") )
+        return;
+
+    if ( isCorrupted( source ) )
     {
         return;
     }
 
+    const lore = item.getLore();
+
+    let popup_str = [""];
+
+    const event = new BowReleaseEvent( source, projectile );
+
+    for ( let i = 0; i < lore.length; ++i )
+    {
+        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
+
+        const effect = BowReleaseEffects.getEffect( baseSpell );
+
+        if ( effect == null )
+            continue;
+
+        effect( event, tier, popup_str );
+    }
+
+    if ( popup_str[ 0 ].length > 0 && source instanceof mc.Player )
+    {
+        source.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+    }
+}
+
+/**
+ * In the entity's equipment, repairs any gear that has the UNBREAKABLE
+ * spell
+ * @param {mc.Entity} entity 
+ */
+export function tryToRepairUnbreakableGear( entity )
+{
+    const equipment = entity.getComponent("equippable");
+
+    if ( equipment == null )
+        return;
+
+    const slots = [ mc.EquipmentSlot.Head, mc.EquipmentSlot.Chest, mc.EquipmentSlot.Legs, mc.EquipmentSlot.Feet, mc.EquipmentSlot.Mainhand, mc.EquipmentSlot.Offhand ];
+
+    for ( const slot of slots )
+    {
+        const item = equipment.getEquipment( slot );
+
+        if ( item == null || !item.getLore().includes( spells.UNBREAKABLE ) )
+            continue;
+
+        const dur = item.getComponent("durability");
+
+        if ( dur == null || dur.damage == 0 )
+            continue;
+
+        dur.damage = 0;
+        equipment.setEquipment( slot, item );
+    }
+}
+
+/**
+ * Parses the defending entity's armor, activating any armor spells
+ * that are activated on hit.
+ * @param { mc.Player } defendingEntity
+ * @param { mc.Entity } attackingEntity
+ * @param { number } damage
+ * @param { string[] } reflectableSpells
+ * @param { boolean } wasProjectile
+ */
+export function parseArmorSpells( defendingEntity, attackingEntity, damage, reflectableSpells, wasProjectile )
+{
     const armorInfo = getEntityArmor( defendingEntity );
 
     if ( armorInfo == null )
@@ -121,100 +182,102 @@ export function parseArmorSpells( defendingEntity, attackingEntity, damage )
 
     const popup_str = [""];
 
+    const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ), reflectableSpells, wasProjectile );
+
     for ( let i = 0; i < spells_.length; ++i )
     {
-        const { baseSpell, tier } = getBaseSpellAndTier( spells_[ i ] );
+        const { baseSpell, tier } = getBaseSpellAndTier( spells_[ i ].spell );
 
-        const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ) );
+        event.equipmentSlot = spells_[ i ].slot;
 
         ArmorSpells.activateEffect( baseSpell, event, tier, popup_str );
     }
 
-    if ( popup_str[ 0 ].length > 0 && defendingEntity instanceof Player )
+    if ( popup_str[ 0 ].length > 0 && defendingEntity instanceof mc.Player )
     {
         defendingEntity.onScreenDisplay.setActionBar( popup_str[ 0 ] );
     }
 }
 
-function activate_sharpenedArrow( player, hitEntity, lore, popup_str )
+/**
+ * Parses the bow spells on the bow currently in the player's main hand.
+ * Only parses effects that activate on entity hit.
+ * @param {mc.Player} player 
+ * @param {mc.Entity} hitEntity 
+ * @param {number} damage The amount of damage done to the hitEntity
+ * @returns { string[] } spells activated that are reflectable
+ */
+export function parseBowSpells( player, hitEntity, damage )
 {
-    if ( !coolDownHasFinished( player, spells.SHARPENED_BOW ) )
-        return;
+    if ( isCorrupted( player ) )
+    {
+        return [];
+    }
 
-    const spell_tier = loreTypeToSpellTier( lore, spells.SHARPENED_BOW );
+    if ( !hitEntity.isValid() )
+    {
+        mc.world.sendMessage("Invalid entity");
+        return [];
+    }
 
-    let dmg = spell_tier / 3;
-    dmg += 1.5;
-    dmg *= 2;
+    const equip = player.getComponent("equippable");
+
+    if ( equip == null )
+    {
+        //util.print( player.typeId + " does not have an equippable component");
+        return [];
+    }
+
+    const item = equip.getEquipment( mc.EquipmentSlot.Mainhand );
+
+    if ( item == undefined )
+        return [];
+
+    if ( !item.typeId.endsWith("bow") )
+        return [];
     
-    popup_str[ 0 ] = popup_str[ 0 ] + spells.SHARPENED_BOW + '\n';
-    hitEntity.applyDamage( dmg );
-    startCoolDown( player, spells.SHARPENED_BOW, 7 );
-}
+    /** @type {string[]} */
+    const lore = item.getLore();
 
-export function parseBowSpells( player, hitEntity )
-{
-    // if ( isCorrupted( player ) )
-    //     return;
+    if ( lore.length == 0 || lore[ 0 ] == undefined )
+    {
+        return [];
+    }
 
-    // const inv = player.getComponent("inventory");
-    // if ( inv == undefined || inv.container == undefined )
-    //     return;
-    // const bow = inv.container.getItem( player.selectedSlot );
+    let popup_str = [""];
 
-    // if ( bow == undefined || !bow.typeId.endsWith('bow') )
-    //     return;
-    
-    // const lore = bow.getLore();
+    let extraDamage = 0;
 
-    // if ( lore == undefined || lore.length == 0 || lore[ 0 ] == undefined )
-    // {
-    //     return;
-    // }
+    const event = new WeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
 
-    // let numOfSpellsHandled = 0;
-    // const numOfSpells = lore.length;
-    // let popup_str = [""];
+    for ( let i = 0; i < lore.length; ++i )
+    {
+        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
 
-    // if ( loreIncludes( lore, spells.EXPLODING ) )
-    // {
-    //     activate_exploding( player, hitEntity, popup_str );
-    //     if ( ++numOfSpellsHandled == numOfSpells )
-    //     {
-    //         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    //         return;
-    //     }
-    // }
-    // if ( loreIncludes( lore, spells.POISON_BOW ) )
-    // {
-    //     activate_poison( player, hitEntity, lore, popup_str );
-    //     if ( ++numOfSpellsHandled == numOfSpells )
-    //     {
-    //         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    //         return;
-    //     }
-    // }
-    // if ( loreIncludes( lore, spells.WITHER_BOW ) )
-    // {
-    //     activate_wither( player, hitEntity, lore, popup_str );
-    //     if ( ++numOfSpellsHandled == numOfSpells )
-    //     {
-    //         player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    //         return;
-    //     }
-    // }
-    // if ( loreIncludes( lore, SHARPENED_BOW ) )
-    // {
-    //     activate_sharpenedArrow( player, hitEntity, lore, popup_str );
-    //     player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    // }
+        const effect = BowEffects.getEffect( baseSpell );
+
+        if ( effect == null )
+        {
+            continue;
+        }
+
+        extraDamage += effect( event, tier, popup_str );
+    }
+
+    if ( popup_str[ 0 ].length > 0 && player instanceof mc.Player )
+    {
+        player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+    }
+
+    return event.reflectableSpells;
 }
 
 export function parsePickaxeSpells( player, pickaxe, blockLocation )
 {
+    /** @type {string[]} */
     const lore = pickaxe.getLore();
 
-    if ( lore == undefined || lore.length == 0 )
+    if ( lore.length == 0 )
     {
         return;
     }
@@ -225,136 +288,17 @@ export function parsePickaxeSpells( player, pickaxe, blockLocation )
     }
 }
 
-function numberToOption( num )
+function addSpellToWeapon( player, weapon, spell_tier )
 {
-    if ( num < 35 )
-    {
-        if ( num < 10 )
-            return 0;
-        if ( num < 20 )
-            return 1;
-        if ( num < 25 )
-            return 2;
-        return 3;
-    }
-    if ( num < 75 )
-    {
-        if ( num < 45 )
-            return 4;
-        if ( num < 55 )
-            return 5;
-        if ( num < 65 )
-            return 6;
-        return 7;
-    }
-    if ( num < 85 )
-        return 8;
-    if ( num < 90 )
-        return 9;
-    return 10;
-}
-
-function getWeaponLoreToAdd( lore_, spell_tier )
-{
-    let lore_to_add = "";
-    let numOfTries = 0;
-
-    const spell_tier_str = numberToRomanNumeral( spell_tier );
-
-    while ( lore_to_add == "" && numOfTries++ < 20 )
-    {
-        const random_number = Math.floor( Math.random() * 100 );
-
-        const option = numberToOption( random_number );
-
-        switch ( option )
-        {
-        case 0:
-        {
-            if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, spells.GROUNDPOUND ) ) continue;
-            lore_to_add = spells.GROUNDPOUND + spell_tier_str;
-            break;
-        }
-        case 1:
-        {
-            if ( spell_tier < 10 ) continue;
-            if ( loreIncludes( lore_, spells.LIGHTNING ) ) continue;
-            lore_to_add = spells.LIGHTNING;
-            break;
-        }
-        case 2:
-        {
-            if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, spells.EXPLODING ) ) continue;
-            lore_to_add = spells.EXPLODING;
-            break;
-        }
-        case 3:
-        {
-            if ( loreIncludes( lore_, spells.LEVITATING ) ) continue;
-            lore_to_add = spells.LEVITATING + spell_tier_str;
-            break;
-        }
-        case 4:
-        {
-            if ( loreIncludes( lore_, spells.LIFESTEAL ) ) continue;
-            lore_to_add = spells.LIFESTEAL + spell_tier_str;
-            break;
-        }
-        case 5:
-        {
-            if ( loreIncludes( lore_, spells.POISON ) ) continue;
-            lore_to_add = spells.POISON + spell_tier_str;
-            break;
-        }
-        case 6:
-        {
-            if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, spells.ABSORBING ) ) continue;
-            lore_to_add = spells.ABSORBING;
-            break;
-        }
-        case 7:
-        {
-            if ( spell_tier < 5 ) continue;
-            if ( loreIncludes( lore_, spells.WITHER ) ) continue;
-            lore_to_add = spells.WITHER + spell_tier_str;
-            break;
-        }
-        case 8:
-        {
-            if ( loreIncludes( lore_, spells.CRITICAL_STRIKE ) ) continue;
-            lore_to_add = spells.CRITICAL_STRIKE + spell_tier_str;
-            break;
-        }
-        case 9:
-        {
-            if ( loreIncludes( lore_, spells.CORRUPTION ) ) continue;
-            lore_to_add = spells.CORRUPTION + spell_tier_str;
-            break;
-        }
-        case 9:
-        {
-            if ( loreIncludes( lore_, spells.SLOWING ) ) continue;
-            lore_to_add = spells.SLOWING + spell_tier_str;
-            break;
-        }
-        }
-    }
-    return lore_to_add;
-}
-
-function enchantWeapon( player, weapon, spell_tier )
-{
+    /** @type {string[]} */
     let lore_ = weapon.getLore();
 
-    if ( lore_ == undefined || lore_.length >= 3 )
+    if ( lore_.length >= 3 )
     {
         return false;
     }
 
-    const lore_to_add = getWeaponLoreToAdd( lore_, spell_tier );
+    const lore_to_add = spells.getRandomWeaponSpell( lore_, spell_tier );
 
     lore_.push( lore_to_add );
 
@@ -365,96 +309,15 @@ function enchantWeapon( player, weapon, spell_tier )
     return true;
 }
 
-/**
- * @param { string[] } lore_ 
- * @param { number } spell_tier 
- * @returns 
- */
-function getArmorLoreToAdd( spell_tier )
+function addSpellToArmor( player, armor, spell_tier )
 {
-    let numOfTries = 0;
-
-    const spell_tier_str = numberToRomanNumeral( spell_tier );
-
-    while ( numOfTries++ < 10 )
-    {
-        const random_number = Math.floor( Math.random() * 100 );
-
-        if ( random_number < 50 )
-        {
-            if ( random_number <  25 )
-            {
-                if ( random_number < 12.5 )
-                {
-                    return spells.STAMPEDE;
-                }
-                else
-                {
-                    return spells.EXTINGUISH + spell_tier_str;
-                }
-            }
-            else // 25 - 50
-            {
-                if ( random_number < 35 )
-                {
-                    if ( spell_tier < 5 )
-                        continue;
-                    return spells.LEAPING;
-                }
-                else
-                {
-                    if ( spell_tier < 10 )
-                            continue;
-                    if ( random_number < 42.5 )
-                    {
-                        return spells.INTIMIDATION + spell_tier_str;
-                    }
-                    else
-                    {
-                        return spells.LASTSTAND;
-                    }
-                }
-            } 
-        }
-        else // 50 - 100
-        {
-            if ( random_number < 75 )
-            {
-                if ( random_number < 62.5 )
-                {
-                    return spells.REFLECT + spell_tier_str;
-                }
-                else
-                {
-                    return spells.IMMUNITY + spell_tier_str;
-                }
-            }
-            else // 75 - 100
-            {
-                if ( random_number < 87.5 )
-                {
-                    if ( spell_tier < 5 )
-                        continue;
-                    return spells.STEADFAST;
-                }
-                else
-                {
-                    return spells.RESILIENCE + spell_tier_str;
-                }
-            }
-        }
-    }
-    return "";
-}
-
-function enchantArmor( player, armor, spell_tier )
-{
+    /** @type {string[]} */
     const lore_ = armor.getLore();
 
-    if ( lore_ == undefined || lore_.length >= 1 )
+    if ( lore_.length >= 1 )
         return false;
 
-    const lore_to_add = getArmorLoreToAdd( spell_tier );
+    const lore_to_add = spells.getRandomArmorSpell( spell_tier );
 
     lore_.push( lore_to_add );
 
@@ -465,58 +328,15 @@ function enchantArmor( player, armor, spell_tier )
     return true;
 }
 
-function getBowLoreToAdd( lore_, spell_tier )
+function addSpellToBow( player, bow, spell_tier )
 {
-    let numOfTries = 0;
-
-    const spell_tier_str = numberToRomanNumeral( spell_tier );
-
-    while ( numOfTries++ < 10 )
-    {
-        const random_number = Math.floor( Math.random() * 100 );
-
-        if ( random_number < 40 )
-        {
-            if ( random_number < 25 )
-            {
-                if ( loreIncludes( lore_, spells.POISON_BOW ) )
-                    continue;
-                return spells.POISON_BOW + spell_tier_str;
-            }
-            else
-            {
-                if ( loreIncludes( lore_, spells.WITHER_BOW ) )
-                    continue;
-                return spells.WITHER_BOW + spell_tier_str;
-            }
-        }
-        else
-        {
-            if ( random_number > 70 )
-            {
-                if ( loreIncludes( lore_, spells.SHARPENED_BOW ) )
-                    continue;
-                return spells.SHARPENED_BOW + spell_tier_str;
-            }
-            else
-            {
-                if ( loreIncludes( lore_, spells.EXPLODING_BOW ) )
-                    continue;
-                return spells.EXPLODING_BOW;
-            }
-        }
-    }
-    return "";
-}
-
-function enchantBow( player, bow, spell_tier )
-{
+    /** @type {string[]} */
     let lore_ = bow.getLore();
 
-    if ( lore_ == undefined || lore_.length > 2 )
+    if ( lore_.length > 2 )
         return false;
 
-    const lore_to_add = getBowLoreToAdd( lore_, spell_tier );
+    const lore_to_add = spells.getRandomBowSpell( lore_, spell_tier );
 
     lore_.push( lore_to_add );
 
@@ -566,16 +386,31 @@ function enchantPickaxe( player, pickaxe, spell_tier )
 
 function clearLore( player, item )
 {
-    if ( item.getLore() == undefined && item.getLore().length == 0 )
+    if ( item.getLore() == undefined || item.getLore().length == 0 )
         return false;
     item.setLore([]);
     player.getComponent("inventory").container.setItem( player.selectedSlot, item );
     return true;
 }
 
+function clearLastLore( player, item )
+{
+    /** @type string[] */
+    const lore = item.getLore();
+
+    if ( lore == undefined || lore.length == 0 )
+        return false;
+
+    lore.pop();
+    item.setLore( lore );
+
+    player.getComponent("inventory").container.setItem( player.selectedSlot, item );
+    return true;
+}
+
 /**
- * @param { Player } player 
- * @param { ItemStack } item
+ * @param { mc.Player } player 
+ * @param { mc.ItemStack } item
  */
 export function showNecromancyTable( player, item )
 {
@@ -584,14 +419,18 @@ export function showNecromancyTable( player, item )
 
     player.addTag("in_nec_menu");
 
-    const form = new ActionFormData()
+    const form = new mcui.ActionFormData()
         .title("Necromancy Table")
         .body("Choose an spell level to apply.\nYou can apply 3 spells on a weapon and 1 spell per piece of armor")
-        .button("Tier I Spellbind:\n§2§l5 Levels")
-        .button("Tier III Spellbind:\n§2§l10 Levels")
-        .button("Tier V Spellbind:\n§2§l25 Levels")
-        .button("Tier X Spellbind:\n§2§l40 Levels")
-        .button("Clear Spells");
+        .button("Weak Spellcast:\n§2§l5 Levels")
+        .button("Minor Spellcast:\n§2§l10 Levels")
+        .button("Normal Spellcast:\n§2§l15 Levels")
+        .button("Major Spellcast:\n§2§l20 Levels")
+        .button("Max Spellcast:\n§2§l25 Levels")
+        .button("Clear Last Spell:\n§2§l5 Levels")
+        .button("Clear Spell(s)")
+        .button("Cast Specific Spell");
+
     form.show( player ).then( response =>
     {
         player.removeTag( "in_nec_menu" );
@@ -602,17 +441,12 @@ export function showNecromancyTable( player, item )
         if ( item == undefined )
             return;
 
+        /** @type number */
         const selection = response.selection + 1;
 
-        const required_level =
-            selection == 5?
-            0 :
-            selection == 4?
-            40 :
-            selection == 3?
-            25 :
-            selection == 2?
-            10 : 5;
+        const required_levels = [5, 10, 15, 20, 25, 5, 0, 0];
+
+        const required_level = required_levels[ selection - 1 ];
 
         if ( player.level < required_level )
         {
@@ -620,62 +454,193 @@ export function showNecromancyTable( player, item )
             return;
         }
 
-        const enchant_tier =
-            selection == 4?
-            10 :
-            selection == 3?
-            5 :
-            selection == 2?
-            3 : 1;
+        const spell_tier = selection;
 
-        const REMOVE_LORE = 5;
+        const REMOVE_LAST = 6;
+        const REMOVE_LORE = 7;
+        const SPECIFIC    = 8;
 
-        if( item.typeId.includes("sword") || item.typeId.includes(" axe") )
+        const isWeapon = item.typeId.includes("sword") || item.typeId.includes(" axe");
+        const isArmor  = item.typeId.includes("helmet") || item.typeId.includes("chestplate") || item.typeId.includes("leggings") || item.typeId.includes("boots");
+        const isBook   = item.typeId.includes("book");
+        const isBow    = item.typeId.endsWith('bow');
+
+        if ( selection != REMOVE_LAST && selection != REMOVE_LORE )
+        {
+            if ( isArmor && item.getLore().length >= 1 )
+            {
+                print("Cannot add more than 1 spell to a piece of armor!", player);
+                return;
+            }
+            else if ( ( isWeapon || isBow ) && item.getLore().length >= 3 )
+            {
+                print("Cannot add more than 3 spells to a weapon!", player);
+                return;
+            }
+        }
+
+        if ( selection == SPECIFIC )
+        {
+            if ( isBook )
+            {
+                print("Cannot select specific spell for a book", player);
+                return;
+            }
+            const infos = isWeapon ? spells.getAllWeaponSpells()
+                        : isArmor ? spells.getAllArmorSpells()
+                        : spells.getAllBowSpells();
+
+            const spellNames = infos.map( info => info.name );
+
+            const chooseSpell = new mcui.ModalFormData()
+                .title("Cast Specific Spell")
+                .dropdown("Choose a Spell", spellNames);
+
+            chooseSpell.show( player ).then( res => {
+
+                if ( res.canceled || res.formValues == null )
+                    return;
+
+                const values = res.formValues;
+
+                /** @type number */
+                const indexOfSpell = values[ 0 ];
+
+                const selectedInfo = infos[ indexOfSpell ];
+
+                const lore = item.getLore();
+
+                for ( let i = 0; i < lore.length; ++i )
+                {
+                    if ( lore[ i ].startsWith( selectedInfo.name ) )
+                    {
+                        print("This item already has this spell on it!");
+                        return;
+                    }
+                }
+
+                const levels = selectedInfo.hasTiers() ? selectedInfo.getSpellTiers() : [ 1 ];
+
+                for ( let i = 0; i < levels.length; ++i )
+                {
+                    let required_level = 0;
+
+                    if ( selectedInfo.hasTiers() )
+                    {
+                        required_level = required_levels[ selectedInfo.getCastTierOfSpellTier( i + 1 ) - 1 ];
+                    }
+                    else
+                    {
+                        required_level = required_levels[ selectedInfo.minimumCastTier - 1 ];
+                    }
+
+                    required_level = Math.round( required_level * 1.5 );
+
+                    required_level = Math.ceil( required_level / 5 ) * 5;
+
+                    levels[ i ] = "Spell Tier " + numberToRomanNumeral( levels[ i ] ) + " (§2§l" + required_level.toString() + " levels" + RESET + ")";
+                }
+
+                const levelSelection = new mcui.ModalFormData()
+                    .title("Select Spell Cast Tier")
+                    .dropdown("Spell Tier", levels );
+
+                levelSelection.show( player ).then( resp =>
+                {
+                    if ( resp.canceled || resp.formValues == null )
+                        return;
+
+                    /** @type number */
+                    const spellLevel = resp.formValues[ 0 ] + 1;
+
+                    let required_level = 0;
+
+                    if ( selectedInfo.hasTiers() )
+                    {
+                        required_level = required_levels[ selectedInfo.getCastTierOfSpellTier( spellLevel ) - 1 ];
+                    }
+                    else
+                    {
+                        required_level = required_levels[ selectedInfo.minimumCastTier - 1 ];
+                    }
+
+                    required_level = Math.round( required_level * 1.5 );
+
+                    required_level = Math.ceil( required_level / 5 ) * 5;
+
+                    if ( player.level < required_level )
+                    {
+                        print("You do not have enough levels (need " + required_level.toString() + ")", player);
+                        return;
+                    }
+
+                    const finalSpell = selectedInfo.hasTiers() ? selectedInfo.name + numberToRomanNumeral( spellLevel ) : selectedInfo.name;
+
+                    lore.push( finalSpell );
+
+                    item.setLore( lore );
+
+                    print(required_level, player);
+
+                    player.getComponent("inventory").container.setItem( player.selectedSlot, item );
+                    player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+                });
+            });
+
+            return;
+        }
+
+        if ( isWeapon )
         {
             if ( selection == REMOVE_LORE ) 
             {
                 clearLore( player, item );
                 return;
             }
+            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
             
-            else if ( !enchantWeapon( player, item, enchant_tier ) ) return;
+            else if ( selection < REMOVE_LAST && !addSpellToWeapon( player, item, spell_tier ) ) return;
 
             player.runCommandAsync("xp -" + required_level.toString() + "L @p");
         }
-        else if ( item.typeId.includes("helmet") || item.typeId.includes("chestplate") || item.typeId.includes("leggings") || item.typeId.includes("boots") )
+        else if ( isArmor )
         {
             if ( selection == REMOVE_LORE ) 
             {
                 clearLore( player, item );
                 return;
             }
-            
-            else if ( !enchantArmor( player, item, enchant_tier ) ) return;
+            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
+
+            else if ( selection < REMOVE_LAST && !addSpellToArmor( player, item, spell_tier ) ) return;
 
             player.runCommandAsync("xp -" + required_level.toString() + "L @p");
         }
-        else if ( item.typeId.includes("book") )
+        else if ( isBook )
         {
             if ( selection == REMOVE_LORE )
             {
-                player.getComponent("inventory").container.setItem( player.selectedSlot, new ItemStack( "book", 1 ) );
+                player.getComponent("inventory").container.setItem( player.selectedSlot, new mc.ItemStack( "book", 1 ) );
             }
+            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
             else
             {
+                const convertTierToBookTier = ['I', 'I', 'II', 'V', 'X'];
                 player.runCommandAsync("clear @s book 0 1");
-                player.runCommandAsync("function tier" + numberToRomanNumeral( enchant_tier ) );
+                player.runCommandAsync("function tier" + convertTierToBookTier[ spell_tier - 1 ] );
             }
             
             player.runCommandAsync("xp -" + required_level.toString() + "L @p");
         }
-        else if ( item.typeId.endsWith('bow') )
+        else if ( isBow )
         {
             if ( selection === REMOVE_LORE )
             {
                 clearLore( player, item );
                 return;
             }
-            else if ( !enchantBow( player, item, enchant_tier ) ) return;
+            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
+            else if ( selection < REMOVE_LAST && !addSpellToBow( player, item, spell_tier ) ) return;
 
             player.runCommandAsync("xp -" + required_level.toString() + "L @p");
         }
@@ -686,13 +651,17 @@ export function showNecromancyTable( player, item )
         //         clearLore( player, item );
         //         return;
         //     }
-        //     else if ( !enchantPickaxe( player, item, enchant_tier ) ) return;
+        //     else if ( !enchantPickaxe( player, item, spell_tier ) ) return;
 
         //     player.runCommandAsync("xp -" + required_level.toString() + "L @p");
         // }
     })
 }
 
+/**
+ * @param {mc.ItemStack} item 
+ * @returns 
+ */
 export function itemIsArmor( item )
 {
     const type = item.typeId;

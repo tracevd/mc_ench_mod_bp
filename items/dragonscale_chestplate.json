@@ -26,7 +26,8 @@
 			},
 			"minecraft:render_offsets": "chestplates",
 			"minecraft:armor": {
-				"protection": 20
+				"protection": 20,
+				"texture_type": "netherite"
 			},
 			"minecraft:wearable": {
 				"slot": "slot.armor.chest"

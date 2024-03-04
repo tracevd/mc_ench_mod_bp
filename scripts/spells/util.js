@@ -13,37 +13,72 @@ export function secondsToTicks( seconds )
 /**
  * @param { String } num 
  */
-export function romanNumeralToNumber( num )
+export function romanNumeralToNumber( numeral )
 {
-    if ( num == "I" )
+    if ( numeral == "I" )
         return 1;
 
-    if ( num == "III" )
+    if ( numeral == "II" )
+        return 2;
+
+    if ( numeral == "III" )
         return 3;
 
-    if ( num == "V" )
+    if ( numeral == "IV" )
+        return 4;
+
+    if ( numeral == "V" )
         return 5;
 
-    if ( num == "X" )
+    if ( numeral == "VI" )
+        return 6;
+
+    if ( numeral == "VII" )
+        return 7;
+
+    if ( numeral == "VIII" )
+        return 8;
+
+    if ( numeral == "IX" )
+        return 9;
+
+    if ( numeral == "X" )
         return 10;
 
     return 1;
 }
 
+const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+
 export function numberToRomanNumeral( num )
 {
-    switch( num )
+    return numerals[ num - 1 ];
+}
+
+/**
+ * @param {string} spell 
+ */
+export function getBaseSpellAndTier( spell )
+{
+    if ( spell.endsWith('I') || spell.endsWith('V') || spell.endsWith('X') )
     {
-    case 1:
-        return "I";
-    case 3:
-        return "III";
-    case 5:
-        return "V";
-    case 10:
-        return "X";
+        const indexOfSpace = spell.lastIndexOf(' ');
+        return { baseSpell: spell.substring( 0, indexOfSpace + 1 ), tier: romanNumeralToNumber( spell.substring( indexOfSpace + 1 ) ) };
     }
-    return "I";
+    return { baseSpell: spell, tier: 0 };
+}
+
+/**
+ * @param {string} spell 
+ */
+export function getBaseSpell( spell )
+{
+    if ( spell.endsWith('I') || spell.endsWith('V') || spell.endsWith('X') )
+    {
+        const indexOfSpace = spell.lastIndexOf(' ');
+        return spell.substring( 0, indexOfSpace + 1 );
+    }
+    return spell;
 }
 
 /**
@@ -56,21 +91,13 @@ export function filter( lore_, item )
 }
 
 /**
+ * Determines if any item in the lore includes the specified string
  * @param { string[] } lore_ 
  * @param { string } item 
  */
 export function loreIncludes( lore_, item )
 {
     return filter( lore_, item ).length > 0;
-}
-
-/**
- * @param { string[] } lore_ 
- * @param { string } item 
- */
-export function getLoreItem( lore_, item )
-{
-    return filter( lore_, item )[ 0 ];
 }
 
 /**
@@ -113,27 +140,6 @@ export function coolDownHasFinished( player, type )
 }
 
 /**
- * @param {string} item 
- * @param {string} type 
- * @returns {number}
- */
-export function getSpellTier( item, type )
-{
-    return romanNumeralToNumber( item.substring( type.length ) );
-}
-
-/**
- * @param {string[]} lore 
- * @param {string} type 
- * @returns {number}
- */
-export function loreTypeToSpellTier( lore, type )
-{
-    const item = getLoreItem( lore, type );
-    return getSpellTier( item, type );
-}
-
-/**
  * @param {number} num 
  */
 export function roundToNearestTenth( num )
@@ -147,5 +153,17 @@ export function roundToNearestTenth( num )
  */
 export function addEffectToOutputString( outputString, effectName )
 {
-    outputString[ 0 ] = outputString[ 0 ] + effectName + '\n';
+    outputString[ 0 ] = outputString[ 0 ] + effectName.trimEnd() + '\n';
+}
+
+/**
+ * Apply damage to an entity
+ * @param {mc.Entity} entity 
+ * @param {number} damage 
+ */
+export function applyDamage( entity, damage )
+{
+    const health = entity.getComponent("health");
+
+    health.setCurrentValue( Math.max( 0, health.currentValue - damage ) );
 }

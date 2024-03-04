@@ -147,7 +147,6 @@
                         },
 						{
                           "function": "enchant_with_levels",
-                          "chance": 50,
                           "treasure": true,
                           "levels": {
                               "min": -10,

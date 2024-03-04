@@ -5,18 +5,16 @@ import * as mc from '@minecraft/server';
 
 import { createShockwave } from '../shockwave.js';
 
-import { HandheldWeaponEvent } from './Events.js';
+import { WeaponEvent, BowReleaseEvent } from './Events.js';
+import { print } from '../util.js';
 
-function makeReflectable( entity, effect )
+/**
+ * @param {WeaponEvent} event 
+ * @param {string} effect 
+ */
+function makeReflectable( event, effect, tier )
 {
-    entity.addTag("reflectable~" + effect );
-    mc.system.runTimeout( () =>
-    {
-        if ( entity.isValid() )
-        {
-            entity.removeTag("reflectable~" + effect );
-        }
-    }, util.secondsToTicks( 1 ) );
+    event.reflectableSpells.push( effect + " " + tier );
 }
 
 export class WeaponEffects
@@ -34,7 +32,7 @@ export class WeaponEffects
 
     /**
      * @param {string} name 
-     * @param {HandheldWeaponEvent} event 
+     * @param {WeaponEvent} event 
      * @param {number} spelltier 
      * @param {string[]} outputString 
      */
@@ -50,7 +48,7 @@ export class WeaponEffects
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -61,20 +59,20 @@ function criticalStrike( event, spelltier, outputString )
 
     const rand = Math.random();
 
-    if ( rand < ( spelltier + 15 ) / 50 )
+    if ( rand < 0.5 )
         return 0;
 
     util.addEffectToOutputString( outputString, spells.CRITICAL_STRIKE );
 
-    const damageAdded = event.damage * 0.3 * spelltier / 7;
+    const damageAdded = event.damage * spelltier / 10;
 
-    event.target.applyDamage( damageAdded );
+    util.applyDamage( event.target, damageAdded );
 
     return damageAdded;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -89,17 +87,18 @@ function poison( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.POISON );
 
-    event.target.runCommandAsync(`effect @s poison ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0}`);
+    event.target.addEffect("poison", util.secondsToTicks(spelltier), {amplifier: spelltier - 1});
 
     if ( !event.reflected )
-        makeReflectable( event.target, spells.POISON );
+        makeReflectable( event, spells.POISON, spelltier );
 
     util.startCoolDown( event.source, spells.POISON, 15 );
+
     return 0;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -114,17 +113,17 @@ function wither( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.WITHER );
 
-    event.target.runCommandAsync(`effect @s wither ${1+Math.floor(spelltier/3)} ${spelltier == 10 ? 2 : spelltier == 5 ? 1 : 0 }`);
+    event.target.addEffect("wither", util.secondsToTicks(spelltier), {amplifier: spelltier - 1});
 
     if ( !event.reflected )
-        makeReflectable( event.target, spells.WITHER );
+        makeReflectable( event, spells.WITHER, spelltier );
 
     util.startCoolDown( event.source, spells.WITHER, 20 );
     return 0;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -137,14 +136,15 @@ function groundPound( event, spelltier, outputString )
     if ( velo <= 0 || !util.coolDownHasFinished( event.source, spells.GROUNDPOUND ) )
         return 0;
 
-    const strength_multiplier = util.roundToNearestTenth( ( 0.9 + velo ) ** 3 );
-    const radius = spelltier * velo / 2 + spelltier - spelltier / 7;
-    const strength = spelltier * strength_multiplier ** 0.6;
+    const strength_multiplier = util.roundToNearestTenth( Math.sqrt( 1 + velo ) * 2 );
+    const radius = Math.log2( ( ( spelltier * velo + spelltier / 1.5 ) * strength_multiplier ) ** 1.5 );
+    const strength = spelltier / 2 * strength_multiplier ** 0.6;
 
     if ( event.source instanceof mc.Player )
     {
-        event.source.sendMessage( `Groundpound strength: ${strength.toString()}` );
-        event.source.sendMessage( `Groundpound radius: ${radius.toString()}` );
+        // event.source.sendMessage( `GroundPound multiplier: ${strength_multiplier.toString()}`);
+        // event.source.sendMessage( `Groundpound strength: ${strength.toString()}` );
+        // event.source.sendMessage( `Groundpound radius: ${radius.toString()}` );
     }
 
     if ( createShockwave( event.source, event.source.location, strength, radius, strength_multiplier ) )
@@ -157,7 +157,7 @@ function groundPound( event, spelltier, outputString )
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -175,14 +175,14 @@ function exploding( event, spelltier, outputString )
     event.target.dimension.createExplosion( event.target.location, 3, { breaksBlocks: false, source: event.source } );
     
     if ( !event.reflected )
-        makeReflectable( event.target, spells.EXPLODING );
+        makeReflectable( event, spells.EXPLODING, spelltier );
 
     util.startCoolDown( event.source, spells.EXPLODING, 15 );
     return 0;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -200,14 +200,14 @@ function absorbing( event, spelltier, outputString )
 
     util.addEffectToOutputString( outputString, spells.ABSORBING );
 
-    event.source.runCommandAsync("effect @s absorption 3 0 true");
+    event.source.addEffect("absorption", util.secondsToTicks(3), {amplifier: 0, showParticles: false});
 
     util.startCoolDown( event.source, spells.ABSORBING, 3 );
     return 0;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -226,7 +226,7 @@ function lifesteal( event, spelltier, outputString )
     util.addEffectToOutputString( outputString, spells.LIFESTEAL );
 
     const health = event.source.getComponent("health");
-    const multiplier = (spelltier / 33) + 0.2;
+    const multiplier = (spelltier / 16) + 0.2;
 
     let health_stolen = event.damage * multiplier;
 
@@ -243,7 +243,7 @@ function lifesteal( event, spelltier, outputString )
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -258,21 +258,20 @@ function slowing( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.SLOWING );
 
-    const time_ = Math.ceil( spelltier / 4 );
+    const time_ = Math.ceil( spelltier / 2 );
     const time = time_ < 1 ? 1 : time_;
-    event.target.runCommandAsync(
-        `effect @s slowness ${ time } ${ ( spelltier > 5 ? 2 : 1 ) } true`
-    );
+
+    event.target.addEffect("slowness", util.secondsToTicks( time ), {amplifier: ( spelltier == 5 ? 2 : 1 ), showParticles: false});
 
     if ( !event.reflected )
-        makeReflectable( event.target, spells.SLOWING );
+        makeReflectable( event, spells.SLOWING, spelltier );
 
     util.startCoolDown( event.source, spells.SLOWING, 7 );
     return 0;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -287,19 +286,31 @@ function lightning( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.LIGHTNING );
 
-    event.target.applyDamage( 10 );
+    const damage = 7;
+
     event.target.runCommandAsync("summon lightning_bolt");
+    util.applyDamage( event.target, damage );
+    const onFire = event.source.getComponent("onfire");
+    mc.system.runTimeout( () =>
+    {
+        event.source.runCommandAsync("fill ~-3 ~-3 ~-3 ~3 ~3 ~3 air replace fire");
+        if ( onFire == null )
+        {
+            event.source.extinguishFire( false );
+        }
+    }, 4 );
+    
     
     if ( !event.reflected )
-        makeReflectable( event.target, spells.LIGHTNING );
+        makeReflectable( event, spells.LIGHTNING, spelltier );
 
-    util.startCoolDown( event.source, spells.LIGHTNING, 7 );
+    util.startCoolDown( event.source, spells.LIGHTNING, 15 );
 
-    return 10;
+    return damage;
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -313,10 +324,10 @@ function levitating( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.LEVITATING );
 
-    event.target.runCommandAsync(`effect @s levitation 1 ${(spelltier)+3} true`);
+    event.target.addEffect("levitation", util.secondsToTicks(1), {amplifier: spelltier + 3, showParticles: false});
 
     if ( !event.reflected )
-        makeReflectable( event.target, spells.LEVITATING );
+        makeReflectable( event, spells.LEVITATING, spelltier );
 
     util.startCoolDown( event.source, spells.LEVITATING, 7 );
     return 0;
@@ -328,7 +339,7 @@ function isCorruptable( entity )
 }
 
 /**
- * @param {HandheldWeaponEvent} event 
+ * @param {WeaponEvent} event 
  * @param {number} spelltier 
  * @param {string[]} outputString 
  */
@@ -344,18 +355,115 @@ function corruption( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.CORRUPTION );
 
-    util.startCoolDown( event.target, spells.CORRUPTED_TAG, ( spelltier == 10 ? 8 : ( spelltier + 7 ) / 2 ) );
+    util.startCoolDown( event.target, spells.CORRUPTED_TAG, spelltier * 3 );
 
     if ( event.target instanceof mc.Player )
     {
-        event.target.onScreenDisplay.setTitle( "You have been " + spells.RESET + spells.LIGHT_PURPLE + "Corrupted", { fadeInDuration: util.secondsToTicks( 0.2 ), stayDuration: util.secondsToTicks( 0.5 ), fadeOutDuration: util.secondsToTicks( 0.2 ) } );
+        event.target.playSound("random.totem", {volume: 0.5});
     }
 
     if ( !event.reflected )
-        makeReflectable( event.target, spells.CORRUPTION );
+        makeReflectable( event, spells.CORRUPTION, spelltier );
     
     util.startCoolDown( event.source, spells.CORRUPTION, 25 );
     return 0;
+}
+
+/**
+ * @param {WeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function lacerate( event, spellTier, outputString )
+{
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+    if ( !util.coolDownHasFinished( event.source, spells.LACERATE ) )
+        return 0;
+
+    const duration = spellTier / 2 + 0.5;
+    const ticksPerSecond = spellTier / 2;
+
+    let id = mc.system.runInterval( () =>
+    {
+        if ( !event.target.isValid() )
+        {
+            const temp = id;
+            id = null;
+            mc.system.clearRun( temp );
+            return;
+        }
+
+        const health = event.target.getComponent("health");
+
+        if ( health.currentValue < 2 )
+        {
+            const temp = id;
+            id = null;
+            mc.system.clearRun( temp );
+            return;
+        }
+
+        health.setCurrentValue( health.currentValue - 1 );
+        event.target.applyDamage( 0.01 );
+        event.target.runCommandAsync("particle ench:lacerate ~ ~1 ~");
+    }, util.secondsToTicks(1) / ticksPerSecond );
+
+    mc.system.runTimeout( () =>
+    {
+        if ( id == null )
+            return;
+        mc.system.clearRun( id );
+    }, util.secondsToTicks( duration ) );
+
+    if ( !event.reflected )
+        util.addEffectToOutputString( outputString, spells.LACERATE );
+
+    if ( !event.reflected )
+        makeReflectable( event, spells.LACERATE, spellTier );
+
+    util.startCoolDown( event.source, spells.LACERATE, 10 );
+
+    return 0;
+}
+
+/**
+ * @param {WeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function unbreakable( event, spelltier, outputString )
+{
+    const equip = event.source.getComponent("equippable");
+
+    if ( equip == null )
+    {
+        print("Null equipment component");
+        return;
+    }
+
+    const item = equip.getEquipment( mc.EquipmentSlot.Mainhand );
+
+    if ( item == null )
+    {
+        return;
+    }
+
+    const durability = item.getComponent("durability");
+
+    if ( durability == null )
+    {
+        return;
+    }
+
+    if ( durability.damage > 0 )
+    {
+        mc.system.run(() =>
+        {
+            durability.damage = 0;
+            equip.setEquipment( mc.EquipmentSlot.Mainhand, item );
+        });
+    }    
 }
 
 WeaponEffects.addEffect( spells.CRITICAL_STRIKE, criticalStrike );
@@ -369,3 +477,111 @@ WeaponEffects.addEffect( spells.SLOWING,         slowing );
 WeaponEffects.addEffect( spells.LIGHTNING,       lightning );
 WeaponEffects.addEffect( spells.LEVITATING,      levitating );
 WeaponEffects.addEffect( spells.CORRUPTION,      corruption );
+WeaponEffects.addEffect( spells.LACERATE,        lacerate );
+WeaponEffects.addEffect( spells.UNBREAKABLE,     unbreakable );
+
+export class BowEffects
+{
+    /** @type { Map< string, (event, spelltier, outputString) => number } > */
+    static #effects = new Map();
+
+    /**
+     * @param {(event, spelltier, outputString) => number} activationFunc 
+     */
+    static addEffect( name, activationFunc )
+    {
+        this.#effects.set( name, activationFunc );
+    }
+
+    static getEffect( name )
+    {
+        const effect = BowEffects.#effects.get( name );
+
+        return effect;
+    }
+}
+
+/**
+ * @param {WeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function sharpenedArrows( event, spellTier, outputString )
+{
+    if ( event.sourceIsCorrupted )
+        return 0;
+
+    const rand = Math.random();
+
+    if ( rand < 0.5 )
+        return 0;
+
+    util.addEffectToOutputString( outputString, spells.SHARPENED_BOW );
+
+    const damageAdded = spellTier / 10 * event.damage;
+
+    util.applyDamage( event.target, damageAdded );
+
+    return damageAdded;
+}
+
+BowEffects.addEffect( spells.SHARPENED_BOW,  sharpenedArrows );
+BowEffects.addEffect( spells.POISON_BOW,     poison );
+BowEffects.addEffect( spells.WITHER_BOW,     wither );
+BowEffects.addEffect( spells.LEVITATING_BOW, levitating );
+BowEffects.addEffect( spells.EXPLODING_BOW,  exploding );
+BowEffects.addEffect( spells.SLOWING_BOW,    slowing );
+BowEffects.addEffect( spells.LIGHTNING_BOW,  lightning );
+BowEffects.addEffect( spells.UNBREAKABLE,    unbreakable );
+
+export class BowReleaseEffects
+{
+    /** @type { Map< string, (event, spelltier, outputString) => void } > */
+    static #effects = new Map();
+
+    /**
+     * @param {(event, spelltier, outputString) => void} activationFunc 
+     */
+    static addEffect( name, activationFunc )
+    {
+        this.#effects.set( name, activationFunc );
+    }
+
+    /**
+     * @param {string} name 
+     */
+    static getEffect( name )
+    {
+        return this.#effects.get( name );
+    }
+}
+
+/**
+ * @param {BowReleaseEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function velocity( event, spellTier, outputString )
+{
+    if ( event.projectile == null )
+    {
+        print("Null projectile", event.source);
+        return;
+    }
+
+    if ( util.isCorrupted( event.source ) )
+    {
+        return;
+    }
+
+    const velocity = event.projectile.getVelocity();
+
+    const normalized = new mc.Vector( velocity.x, velocity.y, velocity.z ).normalized()
+
+    event.projectile.applyImpulse( mc.Vector.multiply( normalized, ( spellTier + 1 ) * 1.5 ) );
+
+    util.addEffectToOutputString( outputString, spells.VELOCITY );
+}
+
+BowReleaseEffects.addEffect( spells.VELOCITY, velocity );
+BowReleaseEffects.addEffect( spells.UNBREAKABLE, unbreakable );
