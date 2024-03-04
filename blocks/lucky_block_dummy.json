@@ -4,7 +4,11 @@
         "description": {
             "identifier": "ench:lucky_block_dummy",
             "is_experimental": false,
-            "register_to_creative_menu": false
+            "register_to_creative_menu": false,
+            "menu_category": {
+                "is_hidden_in_commands": true,
+                "category": "none"
+            }
         },
         "components": {
             "minecraft:destructible_by_explosion": false,

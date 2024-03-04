@@ -1,4 +1,5 @@
 import { Player } from "@minecraft/server";
+import { print } from "./util";
 
 class Vector
 {
@@ -15,25 +16,15 @@ function magnitude( vector )
     return Math.sqrt( vector.x ** 2 + vector.y ** 2 + vector.z ** 2 );
 }
 
-function roundNumberToNearestTenth( num )
-{
-    return Math.round( num * 10 ) / 10;
-}
-
-function subtractAndExponentiate( pointA, pointB )
-{
-    return ( pointA - pointB ) ** 2;
-}
-
 /**
  * @param { Vector } posA
  * @param { Vector } posB
  */
 export function calculateDistance( posA, posB )
 {
-    const x = subtractAndExponentiate( posA.x, posB.x );
-    const y = subtractAndExponentiate( posA.y, posB.y );
-    const z = subtractAndExponentiate( posA.z, posB.z );
+    const x = ( posA.x - posB.x ) ** 2;
+    const y = ( posA.y - posB.y ) ** 2;
+    const z = ( posA.z - posB.z ) ** 2;
     return Math.sqrt( x + y + z );
 }
 
@@ -79,11 +70,8 @@ export function createShockwave( player, spawnPos, strength, range, multiplier )
     const dimension = player.dimension;
     const entities = dimension.getEntities({ location: spawnPos, maxDistance: range, excludeNames: [player.name], excludeFamilies: ["inanimate"], excludeTypes: ["item"], excludeTags: ["anti_shockwave"] });
 
-    if ( entities.length  < 2 )
-        return false;
-
-    // Loop through all nearby entities (not items though)
-    for ( let i = 0; i < entities.length; i++ )
+    // Loop through all nearby entities
+    for ( let i = 0; i < entities.length; ++i )
     {
         const entity = entities[ i ];
 
@@ -93,7 +81,8 @@ export function createShockwave( player, spawnPos, strength, range, multiplier )
         const kbVector = calculateKnockbackVector( entity.location, spawnPos, kbIntensity/2 );
 
         // Apply damage and knockback
-        const damage = roundNumberToNearestTenth( multiplier * ( 0.00025 + ( strength - 1 ) / 600 ) * ( ( distance - 20 ) ** 2 ) + 1.5 );
+        const damage = multiplier * strength * ( range / ( range + distance * distance ) );
+        
         entity.applyDamage( damage );
 
         try

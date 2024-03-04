@@ -1,28 +1,23 @@
-import { Player } from "@minecraft/server"
+import * as mc from "@minecraft/server"
+import * as sets from './sets/sets.js'
 
-class Vec3
+function loadDragonSlayerStuff( player, position, rand )
 {
-    x = 0;
-    y = 0;
-    z = 0;
-}
-
-function loadDragonsBaneStuff( player, position, rand )
-{
-    let command = "structure load DragonsBane";
-    if ( rand < 0.02 )
+    // rand max is .37
+    let command = "structure load ench:DragonSlayer";
+    if ( rand < 0.06 )
     {
-        command += 'Armor';
+        command += 'Bow';
     }
-    else if ( rand < 0.09 )
+    else if ( rand < 0.12 )
     {
         command += 'Helmet';
     }
-    else if ( rand < 0.16 )
+    else if ( rand < 0.18 )
     {
         command += 'Chest';
     }
-    else if ( rand < 0.23 )
+    else if ( rand < 0.24 )
     {
         command += 'Legs';
     }
@@ -36,6 +31,23 @@ function loadDragonsBaneStuff( player, position, rand )
     }
 
     player.runCommandAsync( command + ` ${position.x} ${position.y} ${position.z}`);
+}
+
+/**
+ * @param {mc.Player} player
+ * @param {mc.Vector3} blockLocation
+ */
+function loadRandomArmorFromSets( player, blockLocation )
+{
+    const rand = Math.round( Math.random() * 100 );
+
+    const armorSets = sets.ArmorSets.sets;
+
+    const randomSet = armorSets[ rand % armorSets.length ];
+
+    const randomItem = randomSet.items[ rand % randomSet.items.length ];
+
+    player.dimension.spawnItem( randomItem, blockLocation );
 }
 
 function explode( player, position, rand )
@@ -54,10 +66,10 @@ function awkwardSheep( player, position )
     player.runCommandAsync(`structure load AwkwardSheep ${position.x} ${position.y-1} ${position.z-2}`);
 }
 
-function obisidanTrap( player )
+function obsidianTrap( player )
 {
     const playerPosition = player.location;
-    player.runCommandAsync(`structure load ObisidanTrap ${playerPosition.x-1} ${playerPosition.y-1} ${playerPosition.z-1}`);
+    player.runCommandAsync(`structure load ObsidianTrap ${playerPosition.x-1} ${playerPosition.y-1} ${playerPosition.z-1}`);
 }
 
 function spawnLoot( player, position )
@@ -66,23 +78,27 @@ function spawnLoot( player, position )
 }
 
 /**
- * @param { Player } player 
- * @param { Vec3 } position 
- * @returns 
+ * @param { mc.Player } player 
+ * @param { mc.Vector3 } position 
  */
 export function breakLuckyBlock( player, position )
 {
     const rand = Math.random() * 100;
 
-    if ( rand >= 10 )
+    if ( rand >= 12 )
     {
         spawnLoot( player, position );
         return;
     }
 
+    if ( rand >= 10 )
+    {
+        loadRandomArmorFromSets( player, position );
+        return;
+    }
     if ( rand < 0.37 )
     {
-        loadDragonsBaneStuff( player, position, rand );
+        loadDragonSlayerStuff( player, position, rand );
     }
     else if ( rand < 2.75 )
     {
@@ -94,7 +110,7 @@ export function breakLuckyBlock( player, position )
     }
     else if ( rand < 8 )
     {
-        obisidanTrap( player );
+        obsidianTrap( player );
     }
     else
     {

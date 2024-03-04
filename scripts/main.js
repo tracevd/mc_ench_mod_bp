@@ -1,18 +1,47 @@
 import * as mc from "@minecraft/server"
 
-import { showNecromancyTable, equipArmorWithLore, reset, itemIsNotArmor, itemIsArmor, parseArmorSpells, parseWeaponSpells, parseBowSpells, parsePickaxeSpells } from "./necromancy_table"
+import * as util from "./util"
 
-function print( msg )
-{
-    mc.world.sendMessage( msg );
-}
+import { showNecromancyTable, itemIsArmor, parseArmorSpells, parseWeaponSpells, parseBowSpells, createArmorChecker, removeArmorChecker, entityDied, entityRespawned, releaseProjectile, tryToRepairUnbreakableGear } from "./necromancy_table";
 
-function printObjectFields( obj )
+import * as spells from "./spells/spells";
+
+import { RED } from "./spells/spell_constants";
+
+/**
+ * Adds a health counter to the player underneath their nametag
+ * @param {mc.Entity} entity
+ */
+function updateHealthDisplay( entity )
 {
-    for ( const field in obj )
+    if ( !(entity instanceof mc.Player) )
     {
-        print( field + '' );
+        return;
     }
+    
+    const health = entity.getComponent("health");
+
+    if ( health == null )
+    {
+        return;
+    }
+
+    const heartStr = RED + ( Math.ceil( health.currentValue ) / 2 ) + "♥" + spells.RESET;
+
+    let nameTag = entity.nameTag;
+
+    if ( nameTag.length == 0 || nameTag.length == heartStr.length + 1 )
+    {
+        nameTag = entity.name;
+    }
+
+    const separator = '\n';
+
+    const separatorIdx = nameTag.indexOf( separator );
+
+    const newNameTag = nameTag.substring( 0, separatorIdx == -1 ? undefined : separatorIdx ) + separator + heartStr;
+
+    entity.nameTag = newNameTag;
 }
 
 mc.system.beforeEvents.watchdogTerminate.subscribe( e =>
@@ -21,46 +50,96 @@ mc.system.beforeEvents.watchdogTerminate.subscribe( e =>
     console.warn( e.terminateReason.stackOverflow );
 });
 
+// mc.system.runInterval(() =>
+// {
+//     const dimension = mc.world.getDimension("minecraft:overworld");
+//     const arrows = dimension.getEntities({ type: "minecraft:arrow" });
+//     arrows.forEach(arrow => {
+//         const nearestPlayers = dimension.getPlayers({ closest: 1, location: arrow.location });
+//         if ( nearestPlayers.length > 0 )
+//         {
+//             const nearestPlayer = nearestPlayers[ 0 ];
+//             const playerLocation = nearestPlayer.getHeadLocation();
+//             playerLocation.y -= 0.5;
+//             const direction = mc.Vector.add( mc.Vector.subtract( playerLocation, arrow.location ).normalized(), new mc.Vector(0, 0.1, 0) );
+//             arrow.applyImpulse( mc.Vector.multiply( direction, 0.8 ) );
+//         }
+//     });
+// });
+
 mc.world.afterEvents.entityDie.subscribe( e =>
 {
     if ( e.deadEntity == undefined )
         return;
 
-    if ( !e.deadEntity.typeId.includes('dragon') )
+    if ( e.deadEntity )
+    {
+        entityDied( e.deadEntity );
+    }
+
+    if ( !e.deadEntity.typeId.includes('ender_dragon') )
         return;
 
-    const position = e.deadEntity.location;
-    e.deadEntity.dimension.runCommandAsync(`loot spawn ${position.x} ${position.y} ${position.z} loot dragon_kill`);
+    try
+    {
+        const dragonPosition = e.deadEntity.location;
+
+        e.deadEntity.dimension.runCommandAsync(`loot spawn ${dragonPosition.x} ${dragonPosition.y} ${dragonPosition.z} loot dragon_kill`);
+    }
+    catch ( error )
+    {
+        util.print( e.deadEntity.typeId );
+    }     
 });
 
 mc.world.afterEvents.entityHurt.subscribe( e =>
 {
-    if ( e.damageSource.cause == "thorns" || e.damageSource.cause == "entityExplosion" )
+    tryToRepairUnbreakableGear( e.hurtEntity );
+
+    if ( e.damageSource.damagingEntity != null )
+    {
+        tryToRepairUnbreakableGear( e.damageSource.damagingEntity );
+    }
+
+    const cause = e.damageSource.cause;
+
+    if ( cause == mc.EntityDamageCause.thorns || cause == mc.EntityDamageCause.entityExplosion )
         return;
+
+    let reflectable = [];
+    let wasProjectile = false;
     
-    if ( e.damageSource.damagingEntity != undefined && e.damageSource.damagingEntity instanceof mc.Player )
+    if ( e.damageSource.damagingEntity != undefined )
     {
-        parseWeaponSpells( e.damageSource.damagingEntity, e.hurtEntity, e.damage );
+        if ( e.damageSource.cause == mc.EntityDamageCause.projectile )
+        {
+            reflectable = parseBowSpells( e.damageSource.damagingEntity, e.hurtEntity, e.damage );
+            wasProjectile = true;
+        }
+        else
+        {
+            reflectable = parseWeaponSpells( e.damageSource.damagingEntity, e.hurtEntity, e.damage );
+        }
     }
-    if ( e.hurtEntity != undefined && e.hurtEntity instanceof mc.Entity )
+    if ( e.hurtEntity != undefined )
     {
-        parseArmorSpells( e.hurtEntity, e.damageSource.damagingEntity, e.damage );
+        parseArmorSpells( e.hurtEntity, e.damageSource.damagingEntity, e.damage, reflectable, wasProjectile );
     }
+
+    updateHealthDisplay( e.hurtEntity );
 });
 
 mc.world.afterEvents.projectileHitEntity.subscribe( e =>
 {
-    if ( e.getEntityHit() == undefined || e.source == undefined )
+    const hitEntity = e.getEntityHit();
+
+    if ( hitEntity.entity == undefined || e.source == undefined )
         return;
 
-    if ( e.getEntityHit().entity instanceof mc.Entity
-            && e.source instanceof mc.Player )
+    if ( e.source instanceof mc.Player )
     {
-        const soundOption = { volume: 0.2, pitch: 0.5, };
-        e.source.playSound("random.orb", soundOption);
+        e.source.playSound("random.orb", { volume: 0.2, pitch: 0.5 });
     };
-
-    parseBowSpells( e.source, e.getEntityHit().entity );
 });
 
 import { calculateDistance } from "./shockwave";
@@ -79,32 +158,16 @@ mc.world.beforeEvents.itemUseOn.subscribe( e =>
     if ( isNecTable && e.itemStack != undefined )
     {
         e.cancel = true;
-        mc.system.run( () =>
+        mc.system.run(() =>
         {
             showNecromancyTable( e.source, e.itemStack );
-        } );
+        });
     }
 });
 
 mc.world.beforeEvents.itemUse.subscribe( e =>
 {
     const item = e.itemStack;
-
-    if ( item != undefined && item.typeId == "minecraft:experience_bottle" )
-    {
-        const inv = e.source.getComponent("inventory");
-        const carpet = inv.container.getItem( 0 );
-        const feather = inv.container.getItem( 1 );
-
-        if ( carpet == undefined || feather == undefined )
-            return;
-
-        if ( carpet.typeId != "minecraft:white_carpet" || feather.typeId != "minecraft:feather" )
-            return;
-
-        e.source.runCommandAsync( "xp 50L" );
-        return;
-    }
 
     const block = e.source.getBlockFromViewDirection();
 
@@ -122,34 +185,105 @@ mc.world.beforeEvents.itemUse.subscribe( e =>
     
 });
 
-mc.world.afterEvents.itemUse.subscribe( e =>
+mc.world.afterEvents.entityHealthChanged.subscribe( e =>
 {
-    if ( !( e.source instanceof mc.Player ) || itemIsNotArmor( e.itemStack ) )
-        return;
-
-    const item = e.itemStack;
-    const player = e.source;
-
-    equipArmorWithLore( player, item );
-});
+    updateHealthDisplay( e.entity );
+})
 
 mc.world.afterEvents.playerSpawn.subscribe( e =>
 {
-    mc.system.runTimeout( () =>
+    if ( e.initialSpawn )
     {
-        reset( e.player );
-    }, 100 );
+        createArmorChecker( e.player );
+    }
+    else
+    {
+        entityRespawned( e.player );
+    }
+
+    updateHealthDisplay( e.player );
 });
 
 mc.world.beforeEvents.playerLeave.subscribe( e =>
 {
-    reset( e.player );
+    removeArmorChecker( e.player );
+});
+
+mc.world.afterEvents.itemReleaseUse.subscribe( e =>
+{
+    const dimension = e.source.dimension;
+
+    const entities = dimension.getEntities({ type: "minecraft:arrow", closest: 1, location: e.source.location });
+
+    if ( entities.length == 0 )
+    {
+        return;
+    }
+
+    const arrow = entities[ 0 ];
+
+    releaseProjectile( e.source, e.itemStack, arrow );
+});
+
+mc.world.afterEvents.projectileHitBlock.subscribe( e =>
+{
+    if ( e.source == null || !e.source.isValid() )
+        return;
+
+    const equip = e.source.getComponent("minecraft:equippable");
+
+    if ( equip == null )
+        return;
+
+    const mainhand = equip.getEquipment( mc.EquipmentSlot.Mainhand );
+
+    if ( mainhand == null )
+    {
+        return;
+    }
+
+    if ( !mainhand.typeId.includes('bow') )
+        return;
+
+    const magnetic = mainhand.getLore().filter( v => v.includes( spells.MAGNETIC_ARROWS ) );
+
+    if ( magnetic.length == 0 )
+        return;
+
+    const enchComp = mainhand.getComponent("enchantments");
+
+    if ( enchComp != null && enchComp.enchantments.hasEnchantment('infinity') )
+    {
+        return;
+    }
+
+    e.projectile.kill();
+
+    const inv = e.source.getComponent("minecraft:inventory");
+
+    inv.container.addItem( new mc.ItemStack("minecraft:arrow", 1 ) );
 });
 
 import { breakLuckyBlock } from "./luckyblock";
+import { runCommand } from "./commands";
 
 mc.world.afterEvents.playerBreakBlock.subscribe( e =>
 {
+    if ( e.itemStackBeforeBreak != null )
+    {
+        const dur = e.itemStackBeforeBreak.getComponent("durability");
+
+        if ( dur != null )
+        {
+            if ( dur.damage > 0 )
+            {
+                dur.damage = 0;
+                const equip = e.player.getComponent("equippable");
+                equip.setEquipment( mc.EquipmentSlot.Mainhand, e.itemStackBeforeBreak );
+            }
+        }
+    }
+
     if ( e.itemStackBeforeBreak != null && e.itemStackBeforeBreak.typeId.includes('ickaxe') )
     {
         //parsePickaxeSpells( player, e.itemStackBeforeBreak, e.block.location );
@@ -159,4 +293,18 @@ mc.world.afterEvents.playerBreakBlock.subscribe( e =>
         return;
 
     breakLuckyBlock( e.player, e.block.location );
+});
+
+mc.world.beforeEvents.chatSend.subscribe( e =>
+{
+    const message = e.message;
+
+    if ( !message.startsWith('.') )
+    {
+        return;
+    }
+
+    e.cancel = true;
+
+    runCommand( e.sender, e.message ); 
 });

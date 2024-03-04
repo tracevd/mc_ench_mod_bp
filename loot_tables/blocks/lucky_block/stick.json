@@ -17,7 +17,7 @@
                         },
                         {
                             "function": "set_name",
-                            "name": "Sounding Rod (9/10 Doctors Recommend)"
+                            "name": "Death Stick"
                         },
                         {
                             "function": "specific_enchants",
@@ -39,7 +39,8 @@
                         {
                             "function": "set_lore",
                             "lore": [
-                                "§r§1Critical Strike X"
+                                "§r§qCritical Strike V",
+                                "§r§cWither III"
                             ]
                         }
                     ]
