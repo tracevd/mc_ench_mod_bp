@@ -1,1 +1,0 @@
-xp 1L @p[hasitem=[{item=ench:obsidian_helmet,location=slot.armor.head},{item=ench:obsidian_chestplate,location=slot.armor.chest},{item=ench:obsidian_leggings,location=slot.armor.legs},{item=ench:obsidian_boots,location=slot.armor.feet},{item=minecraft:rabbit,location=slot.weapon.offhand}]]
