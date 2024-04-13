@@ -6,7 +6,7 @@ import { ArmorActivateEvent, WeaponEvent } from './Events.js';
 
 import * as io from "../util.js";
 
-const nonRemoveableTags = new Set( [ "dead" ] );
+const nonRemoveableTags = new Set( [] );
 
 function clearTags( entity )
 {
@@ -32,6 +32,7 @@ export function initializeEntity( entity )
     if ( entity == null )
     {
         mc.world.sendMessage("Null entity");
+        return;
     }
 
     clearTags( entity );
@@ -42,8 +43,6 @@ export function initializeEntity( entity )
     {
         return;
     }
-
-    // io.print( entity.id );
 
     entities.set( entity.id, new EntityArmor( entity ) );
 }
@@ -70,7 +69,6 @@ export function removeEntity( entity )
         entities.delete( entity.id );
     }
 
-    // io.print("Clearing tags");
     clearTags( entity );
 }
 
@@ -108,6 +106,11 @@ export class ArmorSpells
             throw new Error("Cannot get armor effect: " + name );
 
         effect( event, spellTier, outputString );
+    }
+
+    static getEffect( name )
+    {
+        return ArmorSpells.#spells.get( name );
     }
 }
 
@@ -180,26 +183,22 @@ class ArmorSpellAndSlot
     slot;
 }
 
-class EntityArmor
-{
-    constructor( entity )
+mc.system.runInterval( () =>
     {
-        if ( entity == null )
+        // const start = Date.now();
+
+        const players = mc.world.getAllPlayers();
+
+        for ( let i = 0; i < players.length; ++i )
         {
-            return;
-        }
-
-        this.#entity = entity;
-        this.#callbacks = [null, null, null, null];
-
-        this.#entityCallBack = mc.system.runInterval( () => {
-            if ( this.#entity.hasTag( "dead" ) )
+            if ( players[ i ].hasTag('dead') )
             {
-                // io.print("entity is dead!");
-                return;
+                continue;
             }
 
-            const equipment = this.#entity.getComponent('minecraft:equippable');
+            const armor = entities.get( players[ i ].id );
+
+            const equipment = players[ i ].getComponent('minecraft:equippable');
 
             if ( equipment == null )
             {
@@ -207,12 +206,30 @@ class EntityArmor
                 return;
             }
 
-            this.#updateArmorSlot( equipment, mc.EquipmentSlot.Head );
-            this.#updateArmorSlot( equipment, mc.EquipmentSlot.Chest );
-            this.#updateArmorSlot( equipment, mc.EquipmentSlot.Legs );
-            this.#updateArmorSlot( equipment, mc.EquipmentSlot.Feet );
-                     
-        }, util.secondsToTicks( 5 ) );
+            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Head  );
+            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Chest );
+            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Legs  );
+            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Feet  );
+        }
+
+        // const end = Date.now();
+
+        // io.print( ( end - start ) + "ms" );
+    },
+    util.secondsToTicks( 1 )
+);
+
+class EntityArmor
+{
+    constructor( entity )
+    {
+        if ( entity == null )
+        {
+            throw new Error("Null entity");
+        }
+
+        this.#entity = entity;
+        this.#callbacks = [null, null, null, null];
     }
 
     /**
@@ -220,10 +237,18 @@ class EntityArmor
      * @param {mc.EntityEquippableComponent} equipment 
      * @param {mc.EquipmentSlot} slot 
      */
-    #updateArmorSlot( equipment, slot )
+    updateArmorSlot( equipment, slot )
     {
         const item = equipment.getEquipment( slot );
+
         this.updateArmorSpell( item, slot );
+
+        if ( item != null && item.getLore().includes( spells.UNBREAKABLE ) )
+        {
+            const durability = item.getComponent("durability");
+            durability.damage = 0;
+            equipment.setEquipment( slot, item );
+        }
     }
 
     /**
@@ -300,7 +325,7 @@ class EntityArmor
                 this.#entity.removeTag( "dead" );
         });
         
-        mc.system.clearRun( this.#entityCallBack );
+        // mc.system.clearRun( this.#entityCallBack );
     }
 
     entityDied()
@@ -351,6 +376,9 @@ class EntityArmor
      */
     #alreadyHasSpell( spell, ignoreIndex = -1 )
     {
+        if ( spell == spells.UNBREAKABLE )
+            return false;
+
         for ( let i = 0; i < this.#armorSpells.length; ++i )
         {
             if ( i == ignoreIndex )
@@ -430,7 +458,6 @@ class EntityArmor
     #callbacks = [null, null, null, null];
     /** @type { mc.Entity } */
     #entity;
-    #entityCallBack = 0;
 }
 
 // EFFECTS
@@ -607,6 +634,7 @@ function evasion( event, spellTier, outputString )
 
     if ( spellTier * 5 > rand )
     {
+        event.evaded = true;
         util.addEffectToOutputString( outputString, spells.EVASION );
         health.setCurrentValue( health.currentValue + event.damage );
     }
@@ -748,45 +776,76 @@ function destroyLeaping( entity )
     });
 }
 
+/**
+ * @param {mc.Entity} entity 
+ * @param {number} spellTier 
+ */
 function createStampede( entity, spellTier )
 {
-    let lastSwiftness = 0;
+    entity.setDynamicProperty("stampLevel", -1);
+
+    const maxSpeed = spellTier;
 
     return mc.system.runInterval( () =>
     {
+        /** @type number|null */
+        const speedLevel = entity.getDynamicProperty("stampLevel");
+
+        if ( speedLevel == undefined )
+        {
+            throw new Error("Stampede dynamic property error");
+        }
+
         if ( util.isCorrupted( entity ) )
         {
-            if ( lastSwiftness >= 0 )
+            if ( speedLevel >= 0 )
             {
-                lastSwiftness = -1;
+                entity.setDynamicProperty("stampLevel", -1);
                 entity.removeEffect("speed");
             }
             return;
         }
 
-        const velocity = entity.getVelocity();
-        if ( entity.isSprinting == false || ( Math.abs( velocity.x ) < 0.19 && Math.abs( velocity.z ) < 0.19 ) )
+        if ( entity.hasTag('stampcooldown') )
         {
-            lastSwiftness = -1;
-            entity.removeEffect("speed");
+            return;
         }
-        else
-        {
-            if ( lastSwiftness >= 0 )
-                entity.addEffect("speed", util.secondsToTicks(10), { amplifier: lastSwiftness, showParticles: false });
 
-            if ( lastSwiftness < 2 && !entity.hasTag( "stampcooldown" ) )
+        if ( !entity.isSprinting )
+        {
+            entity.setDynamicProperty("stampLevel", -1);
+            entity.removeEffect("speed");
+
+            return;
+        }
+
+        if ( speedLevel > -1 )
+        {
+            entity.addEffect("speed", util.secondsToTicks(10), { amplifier: speedLevel, showParticles: false });
+        }
+
+        if ( speedLevel < maxSpeed && !entity.hasTag( "stampcooldown" ) )
+        {
+            entity.addTag( "stampcooldown" );
+            mc.system.runTimeout( () =>
             {
-                entity.addTag( "stampcooldown" );
-                mc.system.runTimeout( () =>
+                if ( !entity.isSprinting )
                 {
-                    entity.removeTag( "stampcooldown" );
-                    ++lastSwiftness;
-                }, util.secondsToTicks( 3 ) );
-            }
-        }                              
+                    entity.removeTag("stampcooldown");
+                    entity.setDynamicProperty("stampLevel", -1);
+                    entity.removeEffect("speed");
+                    return;
+                }
+                entity.setDynamicProperty("stampLevel", speedLevel + 1 );
+                entity.addEffect("speed", util.secondsToTicks(10), { amplifier: speedLevel + 1, showParticles: false });
+                entity.removeTag( "stampcooldown" );
+            }, util.secondsToTicks( 3 ) );
+        }                           
     }, 30 );
 }
+/**
+ * @param {mc.Entity} entity 
+ */
 function destroyStampede( entity )
 {    
     mc.system.run(() =>
@@ -799,6 +858,27 @@ function destroyStampede( entity )
     });
 }
 
+/**
+ * @param {mc.Entity} entity 
+ */
+function createClarity( entity )
+{
+    mc.system.run( () =>
+    {
+        entity.addEffect("night_vision", util.secondsToTicks(9999), {showParticles: false} );
+    });
+}
+/**
+ * @param {mc.Entity} entity 
+ */
+function destroyClarity( entity )
+{
+    mc.system.run( () =>
+    {
+        entity.removeEffect('night_vision');
+    });
+}
+
 ArmorCallBacks.addCallBack( spells.IMMUNITY, new ArmorCallBack( createImmunity ) );
 ArmorCallBacks.addCallBack( spells.EXTINGUISH, new ArmorCallBack( createExtinguish ) );
 ArmorCallBacks.addCallBack( spells.INTIMIDATION, new ArmorCallBack( createIntimidation ) );
@@ -806,3 +886,4 @@ ArmorCallBacks.addCallBack( spells.STEADFAST, new ArmorCallBack( createSteadfast
 ArmorCallBacks.addCallBack( spells.RESILIENCE, new ArmorCallBack( createResilience, destroyResilience ) );
 ArmorCallBacks.addCallBack( spells.LEAPING, new ArmorCallBack( createLeaping, destroyLeaping ) );
 ArmorCallBacks.addCallBack( spells.STAMPEDE, new ArmorCallBack( createStampede , destroyStampede ) );
+ArmorCallBacks.addCallBack( spells.CLARITY, new ArmorCallBack( createClarity, destroyClarity ) );

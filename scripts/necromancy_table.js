@@ -157,41 +157,87 @@ export function tryToRepairUnbreakableGear( entity )
     }
 }
 
+class ArmorActivation
+{
+    constructor( popup_str, reflectEffect, reflectLevel, evasionEffect, evasionLevel )
+    {
+        this.popup_str = popup_str;
+        this.reflectEffect = reflectEffect;
+        this.reflectLevel = reflectLevel;
+        this.evasionEffect = evasionEffect;
+        this.evasionLevel = evasionLevel;
+    }
+
+    /** @type { ((armorActivation: any) => void) | null } */
+    reflectEffect;
+
+    /** @type { number } */
+    reflectLevel;
+
+    /** @type { ((armorActivation: any) => void) | undefined } */
+    evasionEffect;
+
+    /** @type { number } */
+    evasionLevel;
+
+    /** @type { string[] } */
+    popup_str;
+}
+
 /**
  * Parses the defending entity's armor, activating any armor spells
  * that are activated on hit.
  * @param { mc.Player } defendingEntity
  * @param { mc.Entity } attackingEntity
  * @param { number } damage
- * @param { string[] } reflectableSpells
  * @param { boolean } wasProjectile
  */
-export function parseArmorSpells( defendingEntity, attackingEntity, damage, reflectableSpells, wasProjectile )
+export function parseArmorSpells( defendingEntity, attackingEntity, damage, wasProjectile )
 {
     const armorInfo = getEntityArmor( defendingEntity );
 
     if ( armorInfo == null )
-        return;
+        return null;
 
     const spells_ = armorInfo.getActivateableSpells();
 
     if ( spells_.length == 0 )
     {
-        return;
+        return null;
     }
 
     const popup_str = [""];
 
-    const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ), reflectableSpells, wasProjectile );
+    const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ), [], wasProjectile );
+
+    let reflect;
+    let reflectLevel = 0;
+    let evasion;
+    let evasionLevel = 0;
 
     for ( let i = 0; i < spells_.length; ++i )
     {
         const { baseSpell, tier } = getBaseSpellAndTier( spells_[ i ].spell );
 
+        if ( baseSpell == spells.REFLECT )
+        {
+            reflect = ArmorSpells.getEffect( spells.REFLECT );
+            reflectLevel = tier;
+            continue;
+        }
+        if ( baseSpell == spells.EVASION )
+        {
+            evasion = ArmorSpells.getEffect( spells.EVASION );
+            evasionLevel = tier;
+            continue;
+        }
+
         event.equipmentSlot = spells_[ i ].slot;
 
         ArmorSpells.activateEffect( baseSpell, event, tier, popup_str );
     }
+
+    return new ArmorActivation( popup_str, reflect, reflectLevel, evasion, evasionLevel );
 
     if ( popup_str[ 0 ].length > 0 && defendingEntity instanceof mc.Player )
     {

@@ -182,7 +182,7 @@ function spellCommand( player, args )
          */
         const tryToApplySpell = ( spellArray ) =>
         {
-            const matches = [new spells.SpellInfo(spells.UNBREAKABLE)].concat( spellArray ).filter( (spell) =>
+            const matches = [spells.SpellInfo.dummy(spells.UNBREAKABLE)].concat( spellArray ).filter( (spell) =>
                 spell.name.toLowerCase().includes( spellName.toLowerCase() )
             );
 
@@ -266,6 +266,31 @@ function spellCommand( player, args )
         });
         return;
     }
+    else if ( arg1 == "list" || arg1 == "help" )
+    {
+        if ( itemIsArmor( mainHand ) )
+        {
+            const armorSpells = spells.getAllArmorSpells().map((e) => e.name).join('\n');
+
+            util.print("Choose from the following spells:");
+            util.print(armorSpells);
+        }
+        else if ( mainHand.typeId.includes("sword") || mainHand.typeId.includes("_axe") )
+        {
+            const weaponSpells = spells.getAllWeaponSpells().map((e) => e.name).join('\n');
+            util.print("Choose from the following spells:");
+            util.print(weaponSpells);
+        }
+        else if ( mainHand.typeId.includes('bow') && !mainHand.typeId.includes('bowl') )
+        {
+            const bowSpells = spells.getAllBowSpells().map((e) => e.name).join('\n');
+            util.print("Choose from the following spells:");
+            util.print(bowSpells);
+        }
+        else {
+            util.print("Unrecognized item type");
+        }
+    }
 }
 
 /**
@@ -341,15 +366,19 @@ function gm( player, args )
     switch ( gamemode.toLowerCase().trim() )
     {
     case 's':
+    case 'survival':
         gm = mc.GameMode.survival;
         break;
     case 'c':
+    case 'creative':
         gm = mc.GameMode.creative;
         break;
     case 'a':
+    case 'adventure':
         gm = mc.GameMode.adventure;
         break;
     case 'sp':
+    case 'spectator':
         gm = mc.GameMode.spectator;
         break;
     default:
@@ -363,7 +392,20 @@ function gm( player, args )
     {
         target = target.trim().toLowerCase();
 
-        if ( target != "@a" && target != "@s" && target != "@p" )
+        if ( target == "@a" || target == "@e" )
+        {
+            const players = mc.world.getAllPlayers();
+
+            mc.system.run(() =>
+            {
+                for ( let i = 0; i < players.length; ++i )
+                {
+                    players[ i ].setGameMode( gm );
+                }
+            });
+        }
+
+        if ( target != "@s" && target != "@p" )
         {
             const players = mc.world.getAllPlayers().filter( value => value.name.toLowerCase().includes( target ) );
 
@@ -378,22 +420,12 @@ function gm( player, args )
                 return;
             }
 
-            players[ 0 ].runCommandAsync("gamemode " + gm.toString() );
+            mc.system.run(() => players[ 0 ].setGameMode( gm ) );
             return;
         }
-        
-        target = " " + target;
-    }
-    else
-    {
-        target = "";
     }
 
-    const command = "gamemode " + gm.toString() + target;
-
-    util.print(command, player);
-
-    player.runCommandAsync( command );
+    mc.system.run( () => player.setGameMode( gm ) );
 }
 
 /**
@@ -418,6 +450,69 @@ function nick( player, args )
     });
 }
 
+/**
+ * Duplicate currently held item
+ * @param {mc.Player} player 
+ * @param {string[]} args 
+ */
+function duplicate( player, args )
+{
+    const equip = player.getComponent("equippable");
+
+    const arg1 = args.shift();
+
+    if ( arg1 == "equipment" )
+    {
+        const slots = [mc.EquipmentSlot.Head, mc.EquipmentSlot.Chest, mc.EquipmentSlot.Legs, mc.EquipmentSlot.Feet, mc.EquipmentSlot.Mainhand];
+
+        const items = [];
+
+        for ( let i = 0; i < slots.length; ++i )
+        {
+            const item = equip.getEquipment( slots[ i ] );
+
+            if ( item != null )
+            {
+                items.push( item );
+            }
+        }
+
+        if ( items.length == 0 )
+        {
+            util.print("No equipment to duplicate", player);
+            return;
+        }
+
+        const inv = player.getComponent("inventory");
+
+        mc.system.run(() =>
+        {
+            for ( let i = 0; i < items.length; ++i )
+            {
+                inv.container.addItem( items[ i ] );
+            }
+            util.print("Successfully duplicated equipment");
+        });
+        return;
+    }
+
+    const mainHand = equip.getEquipment( mc.EquipmentSlot.Mainhand );
+
+    if ( mainHand == null )
+    {
+        util.print("Please hold the item you would like to duplicate in your main hand", player);
+        return;
+    }
+
+    const inv = player.getComponent("inventory");
+
+    mc.system.run(() =>
+    {
+        inv.container.addItem( mainHand );
+        util.print("Successfully duplicated item");
+    });
+}
+
 customCommands.set( ".help", new Command( help, false ) );
 customCommands.set( ".cooldowns", new Command( cooldowns, false ) );
 customCommands.set( ".kms", new Command( kms, false ) );
@@ -426,6 +521,7 @@ customCommands.set( ".spells", new Command( spellCommand, true ) );
 customCommands.set( ".durability", new Command( setDurability, true ) );
 customCommands.set( ".gm", new Command( gm, true ) );
 customCommands.set( ".nick", new Command( nick, false ) );
+customCommands.set( ".dupe", new Command( duplicate, true ) );
 
 /**
  * @param {string} str 

@@ -6,7 +6,7 @@ import { showNecromancyTable, itemIsArmor, parseArmorSpells, parseWeaponSpells, 
 
 import * as spells from "./spells/spells";
 
-import { RED } from "./spells/spell_constants";
+import { RED, YELLOW } from "./spells/spell_constants";
 
 /**
  * Adds a health counter to the player underneath their nametag
@@ -26,7 +26,9 @@ function updateHealthDisplay( entity )
         return;
     }
 
-    const heartStr = RED + ( Math.ceil( health.currentValue ) / 2 ) + "♥" + spells.RESET;
+    const heart = "♥";
+
+    const heartStr = RED + ( Math.ceil( health.currentValue ) / 2 ) + heart + spells.RESET;
 
     let nameTag = entity.nameTag;
 
@@ -92,38 +94,66 @@ mc.world.afterEvents.entityDie.subscribe( e =>
     }     
 });
 
+import { ArmorActivateEvent } from "./spells/Events.js";
+import { isCorrupted } from './spells/util.js';
+
 mc.world.afterEvents.entityHurt.subscribe( e =>
 {
-    tryToRepairUnbreakableGear( e.hurtEntity );
-
-    if ( e.damageSource.damagingEntity != null )
-    {
-        tryToRepairUnbreakableGear( e.damageSource.damagingEntity );
-    }
-
     const cause = e.damageSource.cause;
 
     if ( cause == mc.EntityDamageCause.thorns || cause == mc.EntityDamageCause.entityExplosion )
         return;
 
-    let reflectable = [];
-    let wasProjectile = false;
+    const wasProjectile = cause == mc.EntityDamageCause.projectile;
+
+    let activation = null;
     
-    if ( e.damageSource.damagingEntity != undefined )
+    if ( e.hurtEntity != undefined )
     {
-        if ( e.damageSource.cause == mc.EntityDamageCause.projectile )
+        activation = parseArmorSpells( e.hurtEntity, e.damageSource.damagingEntity, e.damage, wasProjectile );
+    }
+
+    let evaded = false;
+
+    if ( activation != null )
+    {
+        if ( activation.evasionEffect != null )
+        {
+            const event = new ArmorActivateEvent( e.hurtEntity, e.damageSource.damagingEntity, e.damage, isCorrupted( e.damageSource.damagingEntity ), [], wasProjectile );
+
+            activation.evasionEffect( event, activation.evasionLevel, activation.popup_str );
+
+            evaded = event.evaded;
+        }
+    }
+
+    let reflectable = [];
+
+    if ( !evaded && e.damageSource.damagingEntity != undefined )
+    {
+        if ( wasProjectile )
         {
             reflectable = parseBowSpells( e.damageSource.damagingEntity, e.hurtEntity, e.damage );
-            wasProjectile = true;
         }
         else
         {
             reflectable = parseWeaponSpells( e.damageSource.damagingEntity, e.hurtEntity, e.damage );
         }
     }
-    if ( e.hurtEntity != undefined )
+
+    if ( !evaded && activation != null )
     {
-        parseArmorSpells( e.hurtEntity, e.damageSource.damagingEntity, e.damage, reflectable, wasProjectile );
+        if ( activation.reflectEffect != null )
+        {
+            const event = new ArmorActivateEvent( e.hurtEntity, e.damageSource.damagingEntity, e.damage, isCorrupted( e.damageSource.damagingEntity ), reflectable, wasProjectile );
+
+            activation.reflectEffect( event, activation.reflectLevel, activation.popup_str );
+        }
+    }
+
+    if ( activation != null && activation.popup_str[ 0 ].length > 0 && e.hurtEntity instanceof mc.Player )
+    {
+        e.hurtEntity.onScreenDisplay.setActionBar( activation.popup_str[ 0 ] );
     }
 
     updateHealthDisplay( e.hurtEntity );
@@ -188,7 +218,7 @@ mc.world.beforeEvents.itemUse.subscribe( e =>
 mc.world.afterEvents.entityHealthChanged.subscribe( e =>
 {
     updateHealthDisplay( e.entity );
-})
+});
 
 mc.world.afterEvents.playerSpawn.subscribe( e =>
 {
@@ -265,7 +295,6 @@ mc.world.afterEvents.projectileHitBlock.subscribe( e =>
 });
 
 import { breakLuckyBlock } from "./luckyblock";
-import { runCommand } from "./commands";
 
 mc.world.afterEvents.playerBreakBlock.subscribe( e =>
 {
@@ -294,6 +323,8 @@ mc.world.afterEvents.playerBreakBlock.subscribe( e =>
 
     breakLuckyBlock( e.player, e.block.location );
 });
+
+import { runCommand } from "./commands";
 
 mc.world.beforeEvents.chatSend.subscribe( e =>
 {

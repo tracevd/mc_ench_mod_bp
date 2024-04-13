@@ -286,7 +286,7 @@ function lightning( event, spelltier, outputString )
     if ( !event.reflected )
         util.addEffectToOutputString( outputString, spells.LIGHTNING );
 
-    const damage = 7;
+    const damage = 6;
 
     event.target.runCommandAsync("summon lightning_bolt");
     util.applyDamage( event.target, damage );
@@ -382,7 +382,7 @@ function lacerate( event, spellTier, outputString )
         return 0;
 
     const duration = spellTier / 2 + 0.5;
-    const ticksPerSecond = spellTier / 2;
+    const ticksPerSecond = 1;
 
     let id = mc.system.runInterval( () =>
     {

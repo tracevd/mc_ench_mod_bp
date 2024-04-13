@@ -8,19 +8,19 @@ export class SpellInfo
 {
     /**
      * @param {string} name 
-     * @param {number[] | null} tiers 
+     * @param {number[]} tiers 
      * @param {number} minimumCastTier 
      */
-    constructor( name, tiers, minimumCastTier = 1 )
+    constructor( name, tiers )
     {
         this.name = name;
-        this.minimumCastTier = minimumCastTier;
         this.#tiers = tiers;
+        this.minimumCastTier = tiers.lastIndexOf( 0 ) + 2;
+    }
 
-        if ( tiers != null )
-        {
-            this.minimumCastTier = tiers.lastIndexOf( 1 ) + 1;
-        }
+    static dummy( name )
+    {
+        return new SpellInfo( name, [] );
     }
 
     /** @type { string } */
@@ -90,7 +90,7 @@ function getTotalWeight( spellArray )
 {
     return spellArray.reduce( (prev, curr) => {
             return prev.setWeight( prev.getWeight() + curr.getWeight() );
-        }, new SpellInfo("").setWeight( 0 )  ).getWeight();
+        }, SpellInfo.dummy("").setWeight( 0 )  ).getWeight();
 }
 
 /**
@@ -140,9 +140,9 @@ export const UNBREAKABLE = `${constants.RESET}${constants.DARK_GREY}Unbreakable`
 // Damages enemies and scatters them
 export const GROUNDPOUND     = `${constants.RESET}${constants.NEUTRAL}Ground Pound `;
 // Summons lightning on hit
-export const LIGHTNING       = `${constants.RESET}${constants.NEGATIVE}Lightning`;
+export const LIGHTNING       = `${constants.RESET}${constants.NEGATIVE}Lightning `;
 // Explodes on hit
-export const EXPLODING       = `${constants.RESET}${constants.NEGATIVE}Exploding`;
+export const EXPLODING       = `${constants.RESET}${constants.NEGATIVE}Exploding `;
 // Causes enemies to float in the and take fall damage
 export const LEVITATING      = `${constants.RESET}${constants.NEGATIVE}Levitating `;
 // Adds health to the player
@@ -150,7 +150,7 @@ export const LIFESTEAL       = `${constants.RESET}${constants.POSITIVE}Lifesteal
 // Poisons hit entity
 export const POISON          = `${constants.RESET}${constants.NEGATIVE}Poison `;
 // Adds absorption for a brief time
-export const ABSORBING       = `${constants.RESET}${constants.POSITIVE}Absorbing`;
+export const ABSORBING       = `${constants.RESET}${constants.POSITIVE}Absorbing `;
 // Withers nearby enemies
 export const WITHER          = `${constants.RESET}${constants.NEGATIVE}Wither `;
 // Damages nearby enemies
@@ -163,17 +163,17 @@ export const CORRUPTION      = `${constants.RESET}${constants.NEGATIVE}Corruptio
 export const LACERATE        = `${constants.RESET}${constants.NEGATIVE}Lacerate `;
 
 const weaponSpells = [
-    new SpellInfo(GROUNDPOUND,      [1, 1, 1, 2, 3]).setWeight( 2 ),
-    new SpellInfo(LIGHTNING,        null, 2)        .setWeight( 3 ),
-    new SpellInfo(EXPLODING,        null, 3)        .setWeight( 2 ),
+    new SpellInfo(GROUNDPOUND,      [0, 0, 1, 2, 3]).setWeight( 2 ),
+    new SpellInfo(LIGHTNING,        [0, 1, 1, 1, 1]).setWeight( 3 ),
+    new SpellInfo(EXPLODING,        [0, 0, 1, 1, 1]).setWeight( 2 ),
     new SpellInfo(LEVITATING,       [1, 2, 3, 4, 5]).setWeight( 5 ),
-    new SpellInfo(LIFESTEAL,        [1, 1, 2, 3, 4]).setWeight( 3 ),
+    new SpellInfo(LIFESTEAL,        [0, 1, 2, 3, 4]).setWeight( 3 ),
     new SpellInfo(POISON,           [1, 2, 3, 4, 5]).setWeight( 3 ),
-    new SpellInfo(ABSORBING,        null)           .setWeight( 4 ),
-    new SpellInfo(WITHER,           [1, 1, 2, 3, 4]).setWeight( 2 ),
+    new SpellInfo(ABSORBING,        [1, 1, 1, 1, 1]).setWeight( 4 ),
+    new SpellInfo(WITHER,           [0, 1, 2, 3, 4]).setWeight( 2 ),
     new SpellInfo(CRITICAL_STRIKE,  [1, 2, 3, 4, 5]).setWeight( 2 ),
     new SpellInfo(SLOWING,          [1, 2, 3, 4, 5]).setWeight( 4 ),
-    new SpellInfo(CORRUPTION,       [1, 1, 1, 2, 3]).setWeight( 1 ),
+    new SpellInfo(CORRUPTION,       [0, 0, 1, 2, 3]).setWeight( 1 ),
     new SpellInfo(LACERATE,         [1, 2, 3, 4, 5]).setWeight( 2 )
 ];
 
@@ -203,39 +203,42 @@ export const EXTINGUISH    = `${constants.RESET}${constants.POSITIVE}Extinguish 
 // Reflect weapon abilities back at attacker
 export const REFLECT       = `${constants.RESET}${constants.NEUTRAL}Reflect `;
 // When about to die, gain boosts to keep you in the fight
-export const LASTSTAND     = `${constants.RESET}${constants.POSITIVE}Last Stand`;
+export const LASTSTAND     = `${constants.RESET}${constants.POSITIVE}Last Stand `;
 // Chance to remove poison effects
 export const IMMUNITY      = `${constants.RESET}${constants.POSITIVE}Immunity `;
 // Gain resistance 1 while wearing
-export const STEADFAST     = `${constants.RESET}${constants.POSITIVE}Steadfast`;
+export const STEADFAST     = `${constants.RESET}${constants.POSITIVE}Steadfast `;
 // Grants health boost
 export const RESILIENCE    = `${constants.RESET}${constants.POSITIVE}Resilience `;
 // Gives jump boost
-export const LEAPING       = `${constants.RESET}${constants.POSITIVE}Leaping`;
+export const LEAPING       = `${constants.RESET}${constants.POSITIVE}Leaping `;
 // Gives jump boost
-export const STAMPEDE      = `${constants.RESET}${constants.POSITIVE}Stampede`;
+export const STAMPEDE      = `${constants.RESET}${constants.POSITIVE}Stampede `;
 // Slows nearby enemies
 export const INTIMIDATION  = `${constants.RESET}${constants.NEGATIVE}Intimidation `;
-// Sets enemies tha thit you on fire
+// Sets enemies that hit you on fire
 export const MAGMA_ARMOR   = `${constants.RESET}${constants.NEGATIVE}Magma Armor `;
 // Pushes away enemies that hit you
 export const PUSH          = `${constants.RESET}${constants.NEUTRAL}Push `;
 // Allows you to dodge damage
 export const EVASION       = `${constants.RESET}${constants.POSITIVE}Evasion `;
+// Gives night vision
+export const CLARITY       = `${constants.RESET}${constants.POSITIVE}Clarity `;
 
 const armorSpells = [
     new SpellInfo(EXTINGUISH,   [1, 2, 3, 4, 5]).setWeight( 4 ),
-    new SpellInfo(REFLECT,      [1, 1, 1, 2, 3]).setWeight( 1 ),
-    new SpellInfo(LASTSTAND,    null, 3)        .setWeight( 3 ),
+    new SpellInfo(REFLECT,      [0, 0, 1, 2, 3]).setWeight( 1 ),
+    new SpellInfo(LASTSTAND,    [0, 0, 1, 1, 1]).setWeight( 3 ),
     new SpellInfo(IMMUNITY,     [1, 2, 3, 4, 5]).setWeight( 4 ),
-    new SpellInfo(STEADFAST,    null, 2)        .setWeight( 3 ),
-    new SpellInfo(RESILIENCE,   [1, 1, 1, 2, 3]).setWeight( 1 ),
-    new SpellInfo(LEAPING,      null)           .setWeight( 4 ),
-    new SpellInfo(STAMPEDE,     null, 3)        .setWeight( 2 ),
+    new SpellInfo(STEADFAST,    [0, 1, 1, 1, 1]).setWeight( 3 ),
+    new SpellInfo(RESILIENCE,   [0, 0, 1, 2, 3]).setWeight( 1 ),
+    new SpellInfo(LEAPING,      [1, 1, 1, 1, 1]).setWeight( 4 ),
+    new SpellInfo(STAMPEDE,     [0, 0, 1, 1, 1]).setWeight( 2 ),
     new SpellInfo(INTIMIDATION, [1, 2, 3, 4, 5]).setWeight( 2 ),
     new SpellInfo(MAGMA_ARMOR,  [1, 2, 3, 4, 5]).setWeight( 4 ),
     new SpellInfo(PUSH,         [1, 2, 3, 4, 5]).setWeight( 3 ),
-    new SpellInfo(EVASION,      [1, 1, 2, 3, 4]).setWeight( 2 ),
+    new SpellInfo(EVASION,      [0, 1, 2, 3, 4]).setWeight( 2 ),
+    new SpellInfo(CLARITY,      [1, 1, 1, 1, 1]).setWeight( 3 )
 ];
 
 const totalArmorSpellWeight = getTotalWeight( armorSpells );
@@ -271,7 +274,7 @@ export const LEVITATING_BOW  = LEVITATING;
 // Gives target slowness
 export const SLOWING_BOW     = SLOWING;
 // Retrieves arrows that miss
-export const MAGNETIC_ARROWS = `${constants.RESET}${constants.NEUTRAL}Magnetic Arrows`;
+export const MAGNETIC_ARROWS = `${constants.RESET}${constants.NEUTRAL}Magnetic Arrows `;
 // Creates lightning when hitting arrows
 export const LIGHTNING_BOW   = LIGHTNING;
 // Makes arrows faster
@@ -279,14 +282,14 @@ export const VELOCITY        = `${constants.RESET}${constants.NEUTRAL}Velocity `
 
 const bowSpells = [
     new SpellInfo(POISON_BOW,       [1, 2, 3, 4, 5]).setWeight( 4 ),
-    new SpellInfo(WITHER_BOW,       [1, 1, 2, 3, 4]).setWeight( 2 ),
-    new SpellInfo(EXPLODING_BOW,    null, 3)        .setWeight( 3 ),
+    new SpellInfo(WITHER_BOW,       [0, 1, 2, 3, 4]).setWeight( 2 ),
+    new SpellInfo(EXPLODING_BOW,    [0, 0, 1, 1, 1]).setWeight( 3 ),
     new SpellInfo(SHARPENED_BOW,    [1, 2, 3, 4, 5]).setWeight( 2 ),
     new SpellInfo(LEVITATING_BOW,   [1, 2, 3, 4, 5]).setWeight( 5 ),
     new SpellInfo(SLOWING_BOW,      [1, 2, 3, 4, 5]).setWeight( 4 ),
-    new SpellInfo(MAGNETIC_ARROWS,  null)           .setWeight( 4 ),
-    new SpellInfo(LIGHTNING_BOW,    null)           .setWeight( 4 ),
-    new SpellInfo(VELOCITY,         [1, 1, 2, 3, 4]).setWeight( 3 )
+    new SpellInfo(MAGNETIC_ARROWS,  [1, 1, 1, 1, 1]).setWeight( 4 ),
+    new SpellInfo(LIGHTNING_BOW,    [1, 1, 1, 1, 1]).setWeight( 4 ),
+    new SpellInfo(VELOCITY,         [0, 1, 2, 3, 4]).setWeight( 3 )
 ];
 
 const totalBowSpellWeight = getTotalWeight( bowSpells );

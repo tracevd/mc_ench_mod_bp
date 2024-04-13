@@ -67,6 +67,9 @@ export class ArmorActivateEvent
 
     /** @type { boolean } */
     causedByProjectile;
+
+    /** @type { boolean } */
+    evaded = false;
 }
 
 export class BowReleaseEvent
