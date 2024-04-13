@@ -2,7 +2,7 @@ import * as mc from "@minecraft/server"
 
 import * as util from "./util"
 
-import { showNecromancyTable, itemIsArmor, parseArmorSpells, parseWeaponSpells, parseBowSpells, createArmorChecker, removeArmorChecker, entityDied, entityRespawned, releaseProjectile, tryToRepairUnbreakableGear } from "./necromancy_table";
+import { showNecromancyTable, itemIsArmor, parseArmorSpells, parseWeaponSpells, parseBowSpells, createArmorChecker, removeArmorChecker, entityDied, entityRespawned, releaseProjectile, parsePickaxeSpells } from "./necromancy_table";
 
 import * as spells from "./spells/spells";
 
@@ -287,7 +287,7 @@ mc.world.afterEvents.projectileHitBlock.subscribe( e =>
         return;
     }
 
-    e.projectile.kill();
+    e.projectile.remove();
 
     const inv = e.source.getComponent("minecraft:inventory");
 
@@ -313,16 +313,19 @@ mc.world.afterEvents.playerBreakBlock.subscribe( e =>
         }
     }
 
-    if ( e.itemStackBeforeBreak != null && e.itemStackBeforeBreak.typeId.includes('ickaxe') )
-    {
-        //parsePickaxeSpells( player, e.itemStackBeforeBreak, e.block.location );
-    }
-
     if ( !e.brokenBlockPermutation.type.id.includes('lucky') )
         return;
 
     breakLuckyBlock( e.player, e.block.location );
 });
+
+mc.world.beforeEvents.playerBreakBlock.subscribe( e =>
+{
+    if ( e.itemStack != null && e.itemStack.typeId.includes('ickaxe') && e.itemStack.getLore().length > 0 )
+    {
+        e.cancel = parsePickaxeSpells( e.player, e.itemStack, e.block );        
+    }
+})
 
 import { runCommand } from "./commands";
 

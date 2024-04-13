@@ -6,8 +6,9 @@ import * as spells from './spells/spells.js';
 
 import { WeaponEffects, BowEffects, BowReleaseEffects } from "./spells/WeaponSpells.js";
 
-import { ArmorActivateEvent, BowReleaseEvent, WeaponEvent } from "./spells/Events.js";
+import { ArmorActivateEvent, BowReleaseEvent, BreakBlockEvent, WeaponEvent } from "./spells/Events.js";
 import { ArmorSpells, initializeEntity, getEntityArmor, removeEntity } from "./spells/ArmorSpells.js";
+import { PickaxeSpells } from "./spells/PickaxeSpells.js";
 import { print } from "./util.js";
 import { RESET } from "./spells/spell_constants.js";
 
@@ -238,11 +239,6 @@ export function parseArmorSpells( defendingEntity, attackingEntity, damage, wasP
     }
 
     return new ArmorActivation( popup_str, reflect, reflectLevel, evasion, evasionLevel );
-
-    if ( popup_str[ 0 ].length > 0 && defendingEntity instanceof mc.Player )
-    {
-        defendingEntity.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    }
 }
 
 /**
@@ -318,20 +314,40 @@ export function parseBowSpells( player, hitEntity, damage )
     return event.reflectableSpells;
 }
 
-export function parsePickaxeSpells( player, pickaxe, blockLocation )
+/**
+ * @param {mc.Player} player 
+ * @param {mc.ItemStack} pickaxe 
+ * @param {mc.Block} block 
+ * @returns 
+ */
+export function parsePickaxeSpells( player, pickaxe, block )
 {
-    /** @type {string[]} */
     const lore = pickaxe.getLore();
 
     if ( lore.length == 0 )
     {
-        return;
+        return false;
     }
 
-    if ( loreIncludes( lore, DRILL ) )
+    let popup_str = [""];
+
+    const event = new BreakBlockEvent( player, pickaxe, block );
+
+    for ( let i = 0; i < lore.length; ++i )
     {
-        activateDrill( player, pickaxe, blockLocation );
+        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
+
+        PickaxeSpells.activateSpell( baseSpell, event, tier, popup_str );
     }
+
+    if ( popup_str[ 0 ].length > 0 )
+    {
+        mc.system.run( () => {
+            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
+        });
+    }
+
+    return event.cancelBlockBreak;
 }
 
 function addSpellToWeapon( player, weapon, spell_tier )
@@ -393,39 +409,21 @@ function addSpellToBow( player, bow, spell_tier )
     return true;
 }
 
-function getPickaxeLoreToAdd( lore_, spell_tier )
+function addSpellToPickaxe( player, pick, spell_tier )
 {
-    let numOfTries = 0;
+    /** @type {string[]} */
+    let lore_ = pick.getLore();
 
-    const spell_tier_str = numberToRomanNumeral( spell_tier );
-
-    while ( numOfTries++ < 10 )
-    {
-        const random_number = Math.floor( Math.random() * 100 );
-
-        if ( loreIncludes( lore_, spells.DRILL ) )
-            continue;
-        return spells.DRILL;
-    }
-    return "";
-}
-
-function enchantPickaxe( player, pickaxe, spell_tier )
-{
-    let lore = pickaxe.getLore();
-
-    if ( lore == undefined || lore.length > 1 )
-    {
+    if ( lore_.length >= 1 )
         return false;
-    }
 
-    const loreToAdd = getPickaxeLoreToAdd( lore, spell_tier );
+    const lore_to_add = spells.getRandomPickaxeSpell( lore_, spell_tier );
 
-    lore.push( loreToAdd );
+    lore_.push( lore_to_add );
 
-    pickaxe.setLore( lore );
+    pick.setLore( lore_ );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlot, pickaxe );
+    player.getComponent("inventory").container.setItem( player.selectedSlot, pick );
 
     return true;
 }
@@ -506,10 +504,11 @@ export function showNecromancyTable( player, item )
         const REMOVE_LORE = 7;
         const SPECIFIC    = 8;
 
-        const isWeapon = item.typeId.includes("sword") || item.typeId.includes(" axe");
+        const isWeapon = item.typeId.includes("sword") || item.typeId.includes("_axe");
         const isArmor  = item.typeId.includes("helmet") || item.typeId.includes("chestplate") || item.typeId.includes("leggings") || item.typeId.includes("boots");
         const isBook   = item.typeId.includes("book");
         const isBow    = item.typeId.endsWith('bow');
+        const isPick   = item.typeId.includes('ickaxe');
 
         if ( selection != REMOVE_LAST && selection != REMOVE_LORE )
         {
@@ -523,6 +522,11 @@ export function showNecromancyTable( player, item )
                 print("Cannot add more than 3 spells to a weapon!", player);
                 return;
             }
+            else if ( isPick && item.getLore().length >= 1 )
+            {
+                print("Cannot add more than 1 spell to a pickaxe!", player);
+                return;
+            }
         }
 
         if ( selection == SPECIFIC )
@@ -534,6 +538,7 @@ export function showNecromancyTable( player, item )
             }
             const infos = isWeapon ? spells.getAllWeaponSpells()
                         : isArmor ? spells.getAllArmorSpells()
+                        : isPick ? spells.getAllPickaxeSpells()
                         : spells.getAllBowSpells();
 
             const spellNames = infos.map( info => info.name );
@@ -647,7 +652,7 @@ export function showNecromancyTable( player, item )
             
             else if ( selection < REMOVE_LAST && !addSpellToWeapon( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @p");
+            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
         }
         else if ( isArmor )
         {
@@ -660,7 +665,7 @@ export function showNecromancyTable( player, item )
 
             else if ( selection < REMOVE_LAST && !addSpellToArmor( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @p");
+            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
         }
         else if ( isBook )
         {
@@ -676,7 +681,7 @@ export function showNecromancyTable( player, item )
                 player.runCommandAsync("function tier" + convertTierToBookTier[ spell_tier - 1 ] );
             }
             
-            player.runCommandAsync("xp -" + required_level.toString() + "L @p");
+            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
         }
         else if ( isBow )
         {
@@ -688,19 +693,20 @@ export function showNecromancyTable( player, item )
             else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
             else if ( selection < REMOVE_LAST && !addSpellToBow( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @p");
+            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
         }
-        // else if ( item.typeId.endsWith('ickaxe') )
-        // {
-        //     if ( selection == REMOVE_LORE )
-        //     {
-        //         clearLore( player, item );
-        //         return;
-        //     }
-        //     else if ( !enchantPickaxe( player, item, spell_tier ) ) return;
+        else if ( isPick )
+        {
+            if ( selection === REMOVE_LORE )
+            {
+                clearLore( player, item );
+                return;
+            }
+            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
+            else if ( selection < REMOVE_LAST && !addSpellToPickaxe( player, item, spell_tier ) ) return;
 
-        //     player.runCommandAsync("xp -" + required_level.toString() + "L @p");
-        // }
+            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+        }
     })
 }
 

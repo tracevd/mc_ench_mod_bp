@@ -41,7 +41,7 @@ export class WeaponEffects
         const effect = WeaponEffects.#effects.get( name );
 
         if ( effect == null )
-            throw new Error("Cannot get weapon effect: " + name );
+            return 0;
 
         return effect( event, spelltier, outputString );
     }

@@ -255,6 +255,12 @@ function spellCommand( player, args )
             return;
         }
 
+        if ( mainHand.typeId.includes('ickaxe') )
+        {
+            tryToApplySpell( spells.getAllPickaxeSpells() );
+            return;
+        }
+
         util.print("Unknown item type: " + mainHand.typeId, player );
     }
     else if ( arg1 == "clear" )
@@ -286,6 +292,12 @@ function spellCommand( player, args )
             const bowSpells = spells.getAllBowSpells().map((e) => e.name).join('\n');
             util.print("Choose from the following spells:");
             util.print(bowSpells);
+        }
+        else if ( mainHand.typeId.includes('ickaxe') )
+        {
+            const pickSpells = spells.getAllPickaxeSpells().map(e => e.name).join('\n');
+            util.print("Choose from the following spells:");
+            util.print(pickSpells);
         }
         else {
             util.print("Unrecognized item type");
@@ -489,7 +501,14 @@ function duplicate( player, args )
         {
             for ( let i = 0; i < items.length; ++i )
             {
-                inv.container.addItem( items[ i ] );
+                if ( inv.container.emptySlotsCount > 0 )
+                {
+                    inv.container.addItem( items[ i ] );
+                }
+                else
+                {
+                    player.dimension.spawnItem( items[ i ], player.location );
+                }                
             }
             util.print("Successfully duplicated equipment");
         });
@@ -508,7 +527,14 @@ function duplicate( player, args )
 
     mc.system.run(() =>
     {
-        inv.container.addItem( mainHand );
+        if ( inv.container.emptySlotsCount > 0 )
+        {
+            inv.container.addItem( mainHand );
+        }
+        else
+        {
+            player.dimension.spawnItem( mainHand, player.location );
+        }
         util.print("Successfully duplicated item");
     });
 }

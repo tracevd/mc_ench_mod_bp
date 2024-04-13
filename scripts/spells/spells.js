@@ -74,7 +74,7 @@ export class SpellInfo
 
     getCastTierOfSpellTier( spellTier )
     {
-        return this.#tiers.lastIndexOf( spellTier ) + 1;
+        return this.#tiers.indexOf( spellTier ) + 1;
     }
 
     getSpellTier( castTier )
@@ -312,9 +312,28 @@ export function getAllBowSpells()
 //                 Pick Spells
 // **********************************************
 
-export const DRILL       = `${constants.RESET}${constants.RED}Drill`;
+export const VEIN_MINER  = `${constants.RESET}${constants.POSITIVE}Vein Miner `;
 
+// export const DRILL       = `${constants.RESET}${constants.RED}Drill`;
 
+const pickaxeSpells = [
+    new SpellInfo( VEIN_MINER, [1, 1, 1, 1, 1] ).setWeight( 2 ),
+]
 
+const totalPickaxeSpellWeight = getTotalWeight( pickaxeSpells );
+
+/**
+ * @param {string[]} alreadyHas 
+ * @param {number} spellTier 
+ */
+export function getRandomPickaxeSpell( alreadyHas, spellTier )
+{
+    return getRandomSpell( pickaxeSpells, alreadyHas, spellTier, totalPickaxeSpellWeight );
+}
+
+export function getAllPickaxeSpells()
+{
+    return pickaxeSpells;
+}
 
 export const CORRUPTED_TAG = 'corrupted';

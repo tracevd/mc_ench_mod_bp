@@ -86,3 +86,59 @@ export class BowReleaseEvent
     /** @type { mc.Entity } */
     projectile;
 }
+
+export class BreakBlockEvent
+{
+    /**
+     * @param {mc.Player} player 
+     * @param {mc.ItemStack} item 
+     * @param {mc.Block} block 
+     */
+    constructor( player, item, block )
+    {
+        this.player = player;
+        this.item = item;
+        this.block = block;
+
+        const ench = item.getComponent("enchantable");
+
+        if ( ench == null )
+        {
+            this.itemFortuneLevel = 0;
+            this.itemHasSilkTouch = false;
+            return;
+        }
+
+        const fortune = ench.getEnchantment("fortune");
+
+        if ( fortune != null )
+        {
+            this.itemFortuneLevel = fortune.level;
+        }
+
+        const silkTouch = ench.getEnchantment("silk_touch");
+
+        if ( silkTouch != null )
+        {
+            this.itemHasSilkTouch = true;
+        }
+    }
+
+    /** @type {mc.Player} */
+    player;
+
+    /** @type {mc.ItemStack} */
+    item;
+
+    /** @type {number} */
+    itemFortuneLevel;
+
+    /** @type {boolean} */
+    itemHasSilkTouch;
+
+    /** @type {mc.Block} */
+    block;
+
+    /** @type {boolean} */
+    cancelBlockBreak = false;
+}
