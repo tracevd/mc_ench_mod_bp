@@ -4,6 +4,8 @@ import * as spells from "./spells.js";
 import * as util from "./util.js";
 import { ArmorActivateEvent, WeaponEvent } from './Events.js';
 
+import { Vector } from '../Vector.js';
+
 import * as io from "../util.js";
 
 const nonRemoveableTags = new Set( [] );
@@ -596,9 +598,9 @@ function push( event, spellTier, outputString )
         return;
     }
 
-    const direction = mc.Vector.subtract( event.source.location, event.target.location ).normalized();
+    const direction = Vector.normalize( Vector.subtract( event.source.location, event.target.location ) );
 
-    const impulse = mc.Vector.multiply( direction, 0.3 * spellTier );
+    const impulse = direction.multiply( 0.3 * spellTier );
 
     util.addEffectToOutputString( outputString, spells.PUSH );
 

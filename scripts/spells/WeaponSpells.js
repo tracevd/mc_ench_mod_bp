@@ -8,6 +8,8 @@ import { createShockwave } from '../shockwave.js';
 import { WeaponEvent, BowReleaseEvent } from './Events.js';
 import { print } from '../util.js';
 
+import { Vector } from '../Vector.js'
+
 /**
  * @param {WeaponEvent} event 
  * @param {string} effect 
@@ -576,12 +578,135 @@ function velocity( event, spellTier, outputString )
 
     const velocity = event.projectile.getVelocity();
 
-    const normalized = new mc.Vector( velocity.x, velocity.y, velocity.z ).normalized()
+    const normalized = Vector.normalize( velocity );
 
-    event.projectile.applyImpulse( mc.Vector.multiply( normalized, ( spellTier + 1 ) * 1.5 ) );
+    event.projectile.applyImpulse( Vector.multiply( normalized, ( spellTier + 1 ) * 1.5 ) );
 
     util.addEffectToOutputString( outputString, spells.VELOCITY );
 }
 
-BowReleaseEffects.addEffect( spells.VELOCITY, velocity );
+/**
+ * @param {BowReleaseEvent} event 
+ * @param {number} spelltier 
+ * @param {string[]} outputString 
+ */
+function aimbot( event, spellTier, outputString )
+{
+    const inSight = event.source.getEntitiesFromViewDirection();
+
+    while ( inSight.length > 0 && inSight[ 0 ].entity.typeId.includes("arrow") )
+    {
+        inSight.shift();
+    }
+
+    if ( inSight.length == 0 || inSight[ 0 ].entity == null )
+    {
+        return;
+    }
+
+    const _targetId = inSight[ 0 ].entity.id;
+    const _arrowId  = event.projectile.id;
+
+    const assistStrength = spellTier * 0.75;
+
+    let func;
+
+    let currentTick = mc.system.currentTick;
+
+    func = () => {
+        try
+        {
+            if ( mc.system.currentTick <= currentTick )
+            {
+                print("Same tick");
+                mc.system.run( func );
+                return;
+            }
+
+            currentTick = mc.system.currentTick;
+
+            const arrow = mc.world.getEntity( _arrowId );
+
+            if ( arrow == null )
+            {
+                return;
+            }
+
+            const target = mc.world.getEntity( _targetId );
+
+            if ( target == null )
+            {
+                return;
+            }
+
+            const targetLocation = target.getHeadLocation();
+
+            const direction = Vector.normalize( Vector.subtract( targetLocation, arrow.location ) );
+
+            arrow.applyImpulse(
+                // counteract gravity
+                Vector.add(
+                    Vector.multiply(
+                        direction,
+                        assistStrength
+                    ),
+                    { x: 0, y: 0.1, z: 0 }
+                )
+            );
+
+            if ( arrow == null || !arrow.isValid() || arrow.getVelocity() < 0.1 || target == null || !target.isValid() )
+            {
+                return;
+            }
+
+            mc.system.run( func );
+        }
+        catch ( e )
+        {
+            print( e, event.source );
+        }
+    }
+
+    mc.system.run( func );
+
+    util.addEffectToOutputString( outputString, spells.AIMBOT );
+
+    // const vd = event.source.getViewDirection();
+
+    // const slope = vd.z / vd.x;
+
+    // const distances = [];
+
+    // for ( let i = 0; i < inSight.length; ++i )
+    // {
+    //     const entity = inSight[ i ].entity;
+
+    //     if ( entity.typeId.includes("arrow") || entity.typeId.includes("item") )
+    //         continue;
+
+    //     const x = entity.location.x - event.source.location.x;
+    //     const z = entity.location.z - event.source.location.z;
+
+    //     // z - slope*x = 0
+
+    //     const distanceFromRay = Math.abs( ( -slope * x ) + z ) / Math.sqrt( 1 + slope ** 2 );
+
+    //     distances.push( [distanceFromRay, entity] );
+    // }
+
+    // const min = Math.min( distances.map( val => { return val[ 0 ]; } ) );
+
+    // for ( let i = 0; i < distances.length; ++i )
+    // {
+    //     if ( distances[ i ][ 0 ] != min )
+    //         continue;
+
+    //     print("Found entity: " + distances[ i ][ 1 ].typeId );
+
+    //     break;
+    // }
+}
+
+BowReleaseEffects.addEffect( spells.VELOCITY,    velocity );
+BowReleaseEffects.addEffect( spells.AIMBOT,      aimbot );
 BowReleaseEffects.addEffect( spells.UNBREAKABLE, unbreakable );

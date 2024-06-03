@@ -279,6 +279,8 @@ export const MAGNETIC_ARROWS = `${constants.RESET}${constants.NEUTRAL}Magnetic A
 export const LIGHTNING_BOW   = LIGHTNING;
 // Makes arrows faster
 export const VELOCITY        = `${constants.RESET}${constants.NEUTRAL}Velocity `;
+// gives arrows aimbot
+export const AIMBOT          = `${constants.RESET}${constants.POSITIVE}Aimbot `;
 
 const bowSpells = [
     new SpellInfo(POISON_BOW,       [1, 2, 3, 4, 5]).setWeight( 4 ),
@@ -289,7 +291,8 @@ const bowSpells = [
     new SpellInfo(SLOWING_BOW,      [1, 2, 3, 4, 5]).setWeight( 4 ),
     new SpellInfo(MAGNETIC_ARROWS,  [1, 1, 1, 1, 1]).setWeight( 4 ),
     new SpellInfo(LIGHTNING_BOW,    [1, 1, 1, 1, 1]).setWeight( 4 ),
-    new SpellInfo(VELOCITY,         [0, 1, 2, 3, 4]).setWeight( 3 )
+    new SpellInfo(VELOCITY,         [0, 1, 2, 3, 4]).setWeight( 3 ),
+    new SpellInfo(AIMBOT,           [0, 0, 1, 2, 3]).setWeight( 1 )
 ];
 
 const totalBowSpellWeight = getTotalWeight( bowSpells );

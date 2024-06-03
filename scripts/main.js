@@ -6,7 +6,7 @@ import { showNecromancyTable, itemIsArmor, parseArmorSpells, parseWeaponSpells, 
 
 import * as spells from "./spells/spells";
 
-import { RED, YELLOW } from "./spells/spell_constants";
+import { RED } from "./spells/spell_constants";
 
 /**
  * Adds a health counter to the player underneath their nametag
@@ -95,7 +95,7 @@ mc.world.afterEvents.entityDie.subscribe( e =>
 });
 
 import { ArmorActivateEvent } from "./spells/Events.js";
-import { isCorrupted } from './spells/util.js';
+import { isCorrupted, roundToNearestTenth } from './spells/util.js';
 
 mc.world.afterEvents.entityHurt.subscribe( e =>
 {
