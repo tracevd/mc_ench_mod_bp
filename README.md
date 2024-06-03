@@ -5,5 +5,5 @@ Features include:
 - Custom weapon effects
 - Custom armor effects
 - New gear to obtain
-- Health displayed below plyer name tags
+- Health displayed below player name tags
 - Lucky blocks with custom actions/loot drops
