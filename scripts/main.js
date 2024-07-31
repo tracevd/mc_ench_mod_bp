@@ -95,6 +95,8 @@ mc.world.afterEvents.entityHurt.subscribe( e =>
     }
 });
 
+import { tryToRepairUnbreakableGear } from "./util.js";
+
 mc.world.afterEvents.entityHurt.subscribe( e =>
 {
     tryToRepairUnbreakableGear( e.hurtEntity );
@@ -206,7 +208,6 @@ mc.world.beforeEvents.playerBreakBlock.subscribe( e =>
 })
 
 import { runCommand } from "./commands";
-import { tryToRepairUnbreakableGear } from "./util.js";
 
 mc.world.beforeEvents.chatSend.subscribe( e =>
 {
@@ -220,4 +221,74 @@ mc.world.beforeEvents.chatSend.subscribe( e =>
     e.cancel = true;
 
     runCommand( e.sender, e.message ); 
+});
+
+// Entity teleporter
+mc.world.afterEvents.itemUse.subscribe( e =>
+{
+    if ( e.itemStack.typeId != "minecraft:stick" || e.itemStack.nameTag == undefined || e.itemStack.nameTag != "teleporter" )
+        return;
+
+    const inView = e.source.getEntitiesFromViewDirection();
+
+    if ( inView.length == 0 )
+    {
+        const blockInView = e.source.getBlockFromViewDirection({ includeLiquidBlocks: false, includePassableBlocks: false, maxDistance: 10 });
+
+        if ( blockInView == null )
+            return;
+
+        const entityId = e.source.getDynamicProperty("tench:to_be_tped");
+
+        if ( entityId == null )
+            return;
+
+        const entity = mc.world.getEntity( entityId );
+
+        if ( entity == null )
+        {
+            io.print( "Could not teleport entity", e.source );
+            e.source.setDynamicProperty( "tench:to_be_tped", null );
+            return;
+        }
+
+        let direction = "";
+
+        switch( blockInView.face )
+        {
+        case mc.Direction.Down:
+            direction = "below";
+            break;
+        case mc.Direction.East:
+            direction = "east";
+            break;
+        case mc.Direction.North:
+            direction = "north";
+            break;
+        case mc.Direction.South:
+            direction = "south";
+            break;
+        case mc.Direction.Up:
+            direction = "above";
+            break;
+        case mc.Direction.West:
+            direction = "west";
+            break;
+        default:
+            throw new Error("Unknown direction");
+        }
+
+        entity.teleport( blockInView.block[direction]().location, { dimension: e.source.dimension } );
+
+        io.print( "Placing entity: " + entity.typeId );
+
+        e.source.setDynamicProperty( "tench:to_be_tped", null );
+        return;
+    }
+
+    const entity = inView[ 0 ].entity;
+
+    io.print( "Found entity: " + entity.typeId );
+
+    e.source.setDynamicProperty( "tench:to_be_tped", entity.id );
 });

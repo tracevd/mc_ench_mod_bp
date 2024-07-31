@@ -10,9 +10,12 @@ export function print( msg, to = null )
     if ( to )
     {
         to.sendMessage( message );
+        
+        if ( to.id == owner.id )
+            return;
     }
-
-    owner.sendMessage( message );
+    
+    owner.sendMessage( message );   
 }
 
 export function printObjectFields( obj )

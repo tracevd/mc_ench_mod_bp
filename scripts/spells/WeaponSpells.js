@@ -463,7 +463,45 @@ export function unbreakable( event, spelltier, outputString )
             durability.damage = 0;
             equip.setEquipment( mc.EquipmentSlot.Mainhand, item );
         });
-    }    
+    }
+
+    return 0;
+}
+
+/**
+ * @param {WeaponEvent} event 
+ * @param {number} spelltier 
+ * @param {StringRef} outputString 
+ */
+function disorient( event, spelltier, outputString )
+{
+    if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+    if ( !util.coolDownHasFinished( event.source, spells.DISORIENT ) )
+        return 0;
+
+    if ( !(event.target instanceof mc.Player) )
+        return 0;
+
+    if ( !event.reflected )
+        makeReflectable( event, spells.DISORIENT, spelltier );
+
+    const inventory = event.target.getComponent("inventory");
+
+    const shuffled = [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
+    .map( e => ({ slot: e, num: Math.random() }) )
+    .sort( ( a, b ) => a.num - b.num );
+
+    for ( let i = 0; i < shuffled.length; ++i )
+    {
+        if ( i != shuffled[ i ].slot )
+            inventory.container.swapItems( i, shuffled[ i ].slot , inventory.container );
+    }
+
+    util.startCoolDown( event.source, spells.DISORIENT, 10 );
+    outputString.addWithNewLine( spells.DISORIENT );
+
+    return 0;
 }
 
 WeaponEffects.addEffect( spells.CRITICAL_STRIKE, criticalStrike );
@@ -479,6 +517,7 @@ WeaponEffects.addEffect( spells.LEVITATING,      levitating );
 WeaponEffects.addEffect( spells.CORRUPTION,      corruption );
 WeaponEffects.addEffect( spells.LACERATE,        lacerate );
 WeaponEffects.addEffect( spells.UNBREAKABLE,     unbreakable );
+WeaponEffects.addEffect( spells.DISORIENT,       disorient );
 
 
 /**

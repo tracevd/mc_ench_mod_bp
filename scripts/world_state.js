@@ -258,25 +258,26 @@ function updateEntity( entity, currentTick, isCorrupted )
         }
     }
 
-    if ( entity instanceof mc.Player )
-    {
-        const cooldowns = entity.getTags()
-            .filter((e) => e.startsWith("cooldown:"))
-            .map(e => e.replace("cooldown:", ""))
-            .join('\n');
+    /// not currently working on console
+    // if ( entity instanceof mc.Player )
+    // {
+    //     const cooldowns = entity.getTags()
+    //         .filter((e) => e.startsWith("cooldown:"))
+    //         .map(e => e.replace("cooldown:", ""))
+    //         .join('\n');
 
-        let message = "";
+    //     let message = "";
 
-        if ( isCorrupted )
-        {
-            message += "You are corrupted!\n";
-        }
-        if ( cooldowns.length > 0 )
-        {
-            message += cooldowns;
-        }
-        entity.onScreenDisplay.setTitle("tench:spell_cooldowns" + message);
-    }
+    //     if ( isCorrupted )
+    //     {
+    //         message += "You are corrupted!\n";
+    //     }
+    //     if ( cooldowns.length > 0 )
+    //     {
+    //         message += cooldowns;
+    //     }
+    //     entity.onScreenDisplay.setTitle("tench:spell_cooldowns" + message);
+    // }
 }
 
 /**

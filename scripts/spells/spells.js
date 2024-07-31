@@ -161,6 +161,8 @@ export const SLOWING         = `${constants.RESET}${constants.NEGATIVE}Slowing `
 export const CORRUPTION      = `${constants.RESET}${constants.NEGATIVE}Corruption `;
 // Causes bleeding effect
 export const LACERATE        = `${constants.RESET}${constants.NEGATIVE}Lacerate `;
+// Shuffle's player's hotbar
+export const DISORIENT       = `${constants.RESET}${constants.NEGATIVE}Disorient `;
 
 const weaponSpells = [
     new SpellInfo(GROUNDPOUND,      [0, 0, 1, 2, 3]).setWeight( 2 ),
@@ -174,7 +176,8 @@ const weaponSpells = [
     new SpellInfo(CRITICAL_STRIKE,  [1, 2, 3, 4, 5]).setWeight( 2 ),
     new SpellInfo(SLOWING,          [1, 2, 3, 4, 5]).setWeight( 4 ),
     new SpellInfo(CORRUPTION,       [0, 0, 1, 2, 3]).setWeight( 1 ),
-    new SpellInfo(LACERATE,         [1, 2, 3, 4, 5]).setWeight( 2 )
+    new SpellInfo(LACERATE,         [1, 2, 3, 4, 5]).setWeight( 2 ),
+    new SpellInfo(DISORIENT,        [0, 0, 1, 1, 1]).setWeight( 2 )
 ];
 
 const totalWeaponSpellWeight = getTotalWeight( weaponSpells );
