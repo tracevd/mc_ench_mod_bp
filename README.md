@@ -8,12 +8,12 @@ Features include:
 - Health displayed below player name tags
 - Lucky blocks with custom actions/loot drops
 
-How to use:
+How to play:
 - Clone this repository into a new folder in the directory for minecraft bedrock development behavior packs
   * (windows) "%LOCALAPPDATA%/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang/development_behavior_packs"
   * Other paths can be found [here](https://wiki.bedrock.dev/guide/project-setup.html).
 - Clone the corresponding [Resource Pack](https://github.com/tracevd/mc_ench_mod_rp) into a new folder at the same path except the path would end with "development_resource_packs" rather than "development_behavior_packs"
-- The final structure should be:
+- The final folder structure should be:
   * com.mojang
     * development_behavior_packs
       * your_new_folder
