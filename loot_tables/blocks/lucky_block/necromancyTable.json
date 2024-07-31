@@ -5,7 +5,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:necromancy_table",
+                    "name": "tench:necromancy_table",
                     "weight": 1,
                     "functions": [
                         {

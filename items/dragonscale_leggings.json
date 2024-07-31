@@ -2,7 +2,7 @@
 	"format_version": "1.18.0",
 	"minecraft:item": {
 		"description": {
-			"identifier": "ench:dragonscale_leggings",
+			"identifier": "tench:dragonscale_leggings",
 			"category": "equipment"
 		},
 		"components": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_dragonscale_leggings"
+				"texture": "tench_dragonscale_leggings"
 			},
 			"minecraft:render_offsets": "leggings",
 			"minecraft:armor": {

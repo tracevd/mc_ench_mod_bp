@@ -2,7 +2,7 @@
   "format_version": "1.12.0",
   "minecraft:recipe_shaped": {
 	"description": {
-	"identifier": "ench:craft_lucky_block"
+	"identifier": "tench:craft_lucky_block"
 	},
 
 	"tags": ["crafting_table"],
@@ -20,7 +20,7 @@
     }
   },
   "result": {
-    "item": "ench:lucky_block",
+    "item": "tench:lucky_block",
     "count": 1
   }
 }

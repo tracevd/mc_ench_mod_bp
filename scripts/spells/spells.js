@@ -261,18 +261,10 @@ export function getAllArmorSpells()
 //                 Bow Spells
 // **********************************************
 
-// Gives target poison when hit
-export const POISON_BOW      = POISON;
-// Gives targer wither when hit
-export const WITHER_BOW      = WITHER;
-// Makes arrows explode on impact
-export const EXPLODING_BOW   = EXPLODING;
 // Add extra damage on arrow hits
 export const SHARPENED_BOW   = `${constants.RESET}${constants.POSITIVE}Sharpened Arrows `;
 // Gives target levitating
 export const LEVITATING_BOW  = LEVITATING;
-// Gives target slowness
-export const SLOWING_BOW     = SLOWING;
 // Retrieves arrows that miss
 export const MAGNETIC_ARROWS = `${constants.RESET}${constants.NEUTRAL}Magnetic Arrows `;
 // Creates lightning when hitting arrows
@@ -281,18 +273,17 @@ export const LIGHTNING_BOW   = LIGHTNING;
 export const VELOCITY        = `${constants.RESET}${constants.NEUTRAL}Velocity `;
 // gives arrows aimbot
 export const AIMBOT          = `${constants.RESET}${constants.POSITIVE}Aimbot `;
+// Spawns powdered snow where the arrow hits
+export const FREEZING        = `${constants.RESET}${constants.NEGATIVE}Freezing `;
 
 const bowSpells = [
-    new SpellInfo(POISON_BOW,       [1, 2, 3, 4, 5]).setWeight( 4 ),
-    new SpellInfo(WITHER_BOW,       [0, 1, 2, 3, 4]).setWeight( 2 ),
-    new SpellInfo(EXPLODING_BOW,    [0, 0, 1, 1, 1]).setWeight( 3 ),
     new SpellInfo(SHARPENED_BOW,    [1, 2, 3, 4, 5]).setWeight( 2 ),
     new SpellInfo(LEVITATING_BOW,   [1, 2, 3, 4, 5]).setWeight( 5 ),
-    new SpellInfo(SLOWING_BOW,      [1, 2, 3, 4, 5]).setWeight( 4 ),
     new SpellInfo(MAGNETIC_ARROWS,  [1, 1, 1, 1, 1]).setWeight( 4 ),
-    new SpellInfo(LIGHTNING_BOW,    [1, 1, 1, 1, 1]).setWeight( 4 ),
+    new SpellInfo(LIGHTNING_BOW,    [0, 1, 1, 1, 1]).setWeight( 2 ),
     new SpellInfo(VELOCITY,         [0, 1, 2, 3, 4]).setWeight( 3 ),
-    new SpellInfo(AIMBOT,           [0, 0, 1, 2, 3]).setWeight( 1 )
+    new SpellInfo(AIMBOT,           [0, 0, 1, 2, 3]).setWeight( 1 ),
+    new SpellInfo(FREEZING,         [0, 0, 1, 1, 1]).setWeight( 2 )
 ];
 
 const totalBowSpellWeight = getTotalWeight( bowSpells );
@@ -315,12 +306,15 @@ export function getAllBowSpells()
 //                 Pick Spells
 // **********************************************
 
-export const VEIN_MINER  = `${constants.RESET}${constants.POSITIVE}Vein Miner `;
+// Mines all ores in a given vein
+export const VEIN_MINER = `${constants.RESET}${constants.POSITIVE}Vein Miner `;
 
-// export const DRILL       = `${constants.RESET}${constants.RED}Drill`;
+// Removes stone in the direction you're facing when mining
+export const EXCAVATE   = `${constants.RESET}${constants.POSITIVE}Excavate `;
 
 const pickaxeSpells = [
     new SpellInfo( VEIN_MINER, [1, 1, 1, 1, 1] ).setWeight( 2 ),
+    new SpellInfo( EXCAVATE,   [0, 1, 1, 2, 3] ).setWeight( 1 ),
 ]
 
 const totalPickaxeSpellWeight = getTotalWeight( pickaxeSpells );

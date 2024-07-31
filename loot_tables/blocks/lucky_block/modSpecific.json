@@ -8,7 +8,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:obsidian_sword",
+                    "name": "tench:obsidian_sword",
                     "weight": 1,
                     "functions": [
                         {
@@ -35,7 +35,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:obsidian_chestplate",
+                    "name": "tench:obsidian_chestplate",
                     "weight": 1,
                     "functions": [
                         {
@@ -62,7 +62,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:obsidian_leggings",
+                    "name": "tench:obsidian_leggings",
                     "weight": 1,
                     "functions": [
                         {
@@ -89,7 +89,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:obsidian_ingot",
+                    "name": "tench:obsidian_ingot",
                     "weight": 1,
                     "functions": [
                         {
@@ -108,7 +108,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:obsidian_helmet",
+                    "name": "tench:obsidian_helmet",
                     "weight": 1,
                     "functions": [
                         {
@@ -135,7 +135,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:obsidian_boots",
+                    "name": "tench:obsidian_boots",
                     "weight": 1,
                     "functions": [
                         {

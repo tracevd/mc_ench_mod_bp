@@ -2,7 +2,7 @@
 	"format_version": "1.18.0",
 	"minecraft:item": {
 		"description": {
-			"identifier": "ench:dragonscale_boots",
+			"identifier": "tench:dragonscale_boots",
 			"category": "equipment"
 		},
 		"components": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_dragonscale_boots"
+				"texture": "tench_dragonscale_boots"
 			},
 			"minecraft:render_offsets": "boots",
 			"minecraft:armor": {

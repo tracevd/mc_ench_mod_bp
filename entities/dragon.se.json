@@ -2,7 +2,7 @@
 	"format_version": "1.16.0",
 	"minecraft:entity": {
 		"description": {
-			"identifier": "ench:dragon",
+			"identifier": "tench:dragon",
 			"is_summonable": true,
 			"is_spawnable": true,
 			"is_experimental": false

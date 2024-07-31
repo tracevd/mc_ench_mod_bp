@@ -2,7 +2,7 @@
     "format_version": "1.16.100",
     "minecraft:recipe_shaped": {
         "description": {
-            "identifier": "ench:craft_necromancy_table"
+            "identifier": "tench:craft_necromancy_table"
         },
         "tags": [ "crafting_table" ],
         "pattern": [
@@ -11,20 +11,14 @@
         ],
         "key": {
             "#": {
-                "item": "ench:obsidian_ingot"
-            },
-            "B": {
-                "item": "minecraft:obsidian"
+                "item": "minecraft:end_stone"
             },
             "C": {
                 "item": "minecraft:enchanting_table"
-            },
-            "D": {
-                "item": "minecraft:diamond_block"
             }
         },
         "result": {
-            "item": "ench:necromancy_table"
+            "item": "tench:necromancy_table"
         }
     }
   }

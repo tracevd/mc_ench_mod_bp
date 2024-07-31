@@ -1,3 +1,5 @@
+import * as mc from "@minecraft/server";
+
 import { Entity, Player, system } from "@minecraft/server";
 
 import { CORRUPTED_TAG } from "./spells.js";
@@ -7,7 +9,7 @@ import { CORRUPTED_TAG } from "./spells.js";
  */
 export function secondsToTicks( seconds )
 {
-    return seconds * 20;
+    return seconds * mc.TicksPerSecond;
 }
 
 /**
@@ -15,35 +17,19 @@ export function secondsToTicks( seconds )
  */
 export function romanNumeralToNumber( numeral )
 {
-    if ( numeral == "I" )
-        return 1;
-
-    if ( numeral == "II" )
-        return 2;
-
-    if ( numeral == "III" )
-        return 3;
-
-    if ( numeral == "IV" )
-        return 4;
-
-    if ( numeral == "V" )
-        return 5;
-
-    if ( numeral == "VI" )
-        return 6;
-
-    if ( numeral == "VII" )
-        return 7;
-
-    if ( numeral == "VIII" )
-        return 8;
-
-    if ( numeral == "IX" )
-        return 9;
-
-    if ( numeral == "X" )
-        return 10;
+    switch ( numeral )
+    {
+    case "I":    return 1;
+    case "II":   return 2;
+    case "III":  return 3;
+    case "IV":   return 4;
+    case "V":    return 5;
+    case "VI":   return 6;
+    case "VII":  return 7;
+    case "VIII": return 8;
+    case "IX":   return 9;
+    case "X":    return 10;
+    }
 
     return 1;
 }
@@ -52,6 +38,10 @@ const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 export function numberToRomanNumeral( num )
 {
+    if ( num > 10 || num < 1 )
+    {
+        return 1;
+    }
     return numerals[ num - 1 ];
 }
 
@@ -82,22 +72,21 @@ export function getBaseSpell( spell )
 }
 
 /**
- * @param { string[] } lore_
- * @param { string } item
+ * Returns true if any string in "lore" includes
+ * 'spell' as a substring
+ * @param { string[] } lore 
+ * @param { string } spell 
+ * @returns 
  */
-export function filter( lore_, item )
+export function loreIncludes( lore, spell )
 {
-    return lore_.filter( element => element.includes( item ) );
-}
+    for ( let i = 0; i < lore.length; ++i )
+    {
+        if ( lore[ i ].includes( spell ) )
+            return true;
+    }
 
-/**
- * Determines if any item in the lore includes the specified string
- * @param { string[] } lore_ 
- * @param { string } item 
- */
-export function loreIncludes( lore_, item )
-{
-    return filter( lore_, item ).length > 0;
+    return false;
 }
 
 /**
@@ -119,12 +108,13 @@ export function isCorrupted( player )
  */
 export function startCoolDown( player, type, seconds )
 {
-    player.addTag( type );
+    const cooldownTag = "cooldown:" + type
+    player.addTag( cooldownTag );
     system.runTimeout( () =>
     {
         if ( player.isValid() )
         {
-            player.removeTag( type );
+            player.removeTag( cooldownTag );
         }
     }, secondsToTicks( seconds ) );
 }
@@ -136,7 +126,7 @@ export function startCoolDown( player, type, seconds )
  */
 export function coolDownHasFinished( player, type )
 {
-    return !( player.hasTag( type ) );
+    return !( player.hasTag( "cooldown:" + type ) );
 }
 
 /**
@@ -148,22 +138,21 @@ export function roundToNearestTenth( num )
 }
 
 /**
- * @param {string[]} outputString 
- * @param {string} effectName 
- */
-export function addEffectToOutputString( outputString, effectName )
-{
-    outputString[ 0 ] = outputString[ 0 ] + effectName.trimEnd() + '\n';
-}
-
-/**
  * Apply damage to an entity
  * @param {mc.Entity} entity 
  * @param {number} damage 
  */
-export function applyDamage( entity, damage )
+export function applyDamage( entity, damage, sourceOfDamage, isProjectile = false )
 {
     const health = entity.getComponent("health");
 
-    health.setCurrentValue( Math.max( 0, health.currentValue - damage ) );
+    health.setCurrentValue( Math.max( 0.01, health.currentValue - damage ) );
+
+    entity.applyDamage(
+        0.1,
+        {
+            cause: isProjectile ? mc.EntityDamageCause.projectile : mc.EntityDamageCause.entityAttack,
+            damagingEntity: sourceOfDamage
+        }
+    )
 }

@@ -5,7 +5,7 @@
 			"entries": [
 				{
 					"type": "item",
-					"name": "ench:ectoplasm",
+					"name": "tench:ectoplasm",
 					"weight": 1,
 					"functions": [
 						{

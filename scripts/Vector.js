@@ -1,9 +1,15 @@
 export class Vector
 {
+    /** Returns the magnitude of the vector */
+    static magnitude( vec )
+    {
+        return Math.sqrt( vec.x*vec.x + vec.y*vec.y + vec.z*vec.z );
+    }
+
     /** Normalizes the vector. Returns the normalized vector as an optional output */
     static normalize( vec )
     {
-        const mag = Math.sqrt( vec.x*vec.x + vec.y*vec.y + vec.z*vec.z );
+        const mag = Vector.magnitude( vec );
 
         if ( mag == 0 )
             return vec;
@@ -59,5 +65,10 @@ export class Vector
     static equal( vec1, vec2 )
     {
         return vec1.x == vec2.x && vec1.y == vec2.y && vec1.z == vec2.z;
+    }
+
+    static distance( vec1, vec2 )
+    {
+        return Math.sqrt( ( vec1.x - vec2.x ) ** 2 + ( vec1.y - vec2.y ) ** 2 + ( vec1.z - vec2.z ) ** 2 );
     }
 }

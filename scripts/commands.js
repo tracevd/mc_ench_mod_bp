@@ -1,6 +1,6 @@
 import * as mc from '@minecraft/server';
 
-import * as util from './util.js';
+import * as io from './print.js';
 import * as spells from './spells/spells.js';
 
 import { ArmorSets } from './sets/sets';
@@ -42,7 +42,7 @@ function help( player, args )
         .map( value => value[ 0 ] )
         .join('\n');
 
-    util.print("Commands you can use:\n" + commandNames, player );
+    io.print("Commands you can use:\n" + commandNames, player );
 }
 
 /**
@@ -54,7 +54,7 @@ function cooldowns( player, args )
 {
     if ( args.length > 0 )
     {
-        util.print("Too many arguments for 'cooldowns' command", player );
+        io.print("Too many arguments for 'cooldowns' command", player );
         return;
     }
     
@@ -76,7 +76,7 @@ function cooldowns( player, args )
         coolDownMessage = "You have no active cooldowns";
     }
 
-    util.print( coolDownMessage, player );
+    io.print( coolDownMessage, player );
 }
 
 /**
@@ -98,7 +98,7 @@ function spawnArmorSet( player, args )
 {
     if ( args.length != 1 )
     {
-        util.print("'armor_sets' command only has one argument", player );
+        io.print("'armor_sets' command only has one argument", player );
         return;
     }
 
@@ -106,7 +106,7 @@ function spawnArmorSet( player, args )
 
     if ( _set.length == 0 )
     {
-        util.print("Could not find set named '" + args[ 0 ] + "'", player);
+        io.print("Could not find set named '" + args[ 0 ] + "'", player);
         return;
     }
 
@@ -130,7 +130,7 @@ function spellCommand( player, args )
 {
     if ( args.length == 0 )
     {
-        util.print("Expected arguments", player);
+        io.print("Expected arguments", player);
         return;
     }
 
@@ -140,7 +140,7 @@ function spellCommand( player, args )
 
     if ( mainHand == null )
     {
-        util.print("Must be holding the piece you want to inspect/add", player);
+        io.print("Must be holding the piece you want to inspect/add", player);
         return;
     }
 
@@ -150,7 +150,7 @@ function spellCommand( player, args )
     {
         if ( args.length < 2 )
         {
-            util.print("Expected spell to add as two arguments: <spell name> <spell tier (number)>", player);
+            io.print("Expected spell to add as two arguments: <spell name> <spell tier (number)>", player);
             return;
         }
 
@@ -167,13 +167,13 @@ function spellCommand( player, args )
         }
         catch ( e )
         {
-            util.print("Spell tier argument must be convertible to an integer", player);
+            io.print("Spell tier argument must be convertible to an integer", player);
             return;
         }
 
         if ( spellTierNum < 1 || spellTierNum > 10 )
         {
-            util.print("Spell tier argument must be in the range 1 through 10", player);
+            io.print("Spell tier argument must be in the range 1 through 10", player);
             return;
         }
 
@@ -185,8 +185,6 @@ function spellCommand( player, args )
             const matches = [spells.SpellInfo.dummy(spells.UNBREAKABLE)].concat( spellArray ).filter( (spell) =>
                 spell.name.toLowerCase().includes( spellName.toLowerCase() )
             );
-
-            util.print( matches.length );
 
             if ( matches.length > 1 )
             {
@@ -205,13 +203,13 @@ function spellCommand( player, args )
                     str += RESET + ", ...";
                 }
 
-                util.print( str, player );
+                io.print( str, player );
                 return;
             }
 
             if ( matches.length == 0 )
             {
-                util.print("Cannot find armor spell '" + spellName + "'", player);
+                io.print("Cannot find armor spell '" + spellName + "'", player);
                 return;
             }
 
@@ -221,7 +219,7 @@ function spellCommand( player, args )
 
             if ( loreIncludes( lore, spell ) )
             {
-                util.print("This item already has this spell");
+                io.print("This item already has this spell");
                 return;
             }
 
@@ -231,7 +229,7 @@ function spellCommand( player, args )
             {
                 mainHand.setLore( lore );
                 equip.setEquipment( mc.EquipmentSlot.Mainhand, mainHand );
-                util.print("Added " + lore[ lore.length - 1 ], player );
+                io.print("Added " + lore[ lore.length - 1 ], player );
             });
         };
 
@@ -261,7 +259,7 @@ function spellCommand( player, args )
             return;
         }
 
-        util.print("Unknown item type: " + mainHand.typeId, player );
+        io.print("Unknown item type: " + mainHand.typeId, player );
     }
     else if ( arg1 == "clear" )
     {
@@ -278,29 +276,29 @@ function spellCommand( player, args )
         {
             const armorSpells = spells.getAllArmorSpells().map((e) => e.name).join('\n');
 
-            util.print("Choose from the following spells:");
-            util.print(armorSpells);
+            io.print("Choose from the following spells:", player);
+            io.print(armorSpells, player);
         }
         else if ( mainHand.typeId.includes("sword") || mainHand.typeId.includes("_axe") )
         {
             const weaponSpells = spells.getAllWeaponSpells().map((e) => e.name).join('\n');
-            util.print("Choose from the following spells:");
-            util.print(weaponSpells);
+            io.print("Choose from the following spells:", player);
+            io.print(weaponSpells, player);
         }
         else if ( mainHand.typeId.includes('bow') && !mainHand.typeId.includes('bowl') )
         {
             const bowSpells = spells.getAllBowSpells().map((e) => e.name).join('\n');
-            util.print("Choose from the following spells:");
-            util.print(bowSpells);
+            io.print("Choose from the following spells:", player);
+            io.print(bowSpells, player);
         }
         else if ( mainHand.typeId.includes('ickaxe') )
         {
             const pickSpells = spells.getAllPickaxeSpells().map(e => e.name).join('\n');
-            util.print("Choose from the following spells:");
-            util.print(pickSpells);
+            io.print("Choose from the following spells:", player);
+            io.print(pickSpells, player);
         }
         else {
-            util.print("Unrecognized item type");
+            io.print("Unrecognized item type", player);
         }
     }
 }
@@ -318,7 +316,7 @@ function setDurability( player, args )
 
     if ( mainHand == null )
     {
-        util.print("Please have the item in your hand that you want to change", player);
+        io.print("Please have the item in your hand that you want to change", player);
         return;
     }
 
@@ -326,7 +324,7 @@ function setDurability( player, args )
 
     if ( dur == null )
     {
-        util.print("This item does not have a durability component: " + mainHand.typeId, player );
+        io.print("This item does not have a durability component: " + mainHand.typeId, player );
         return;
     }
 
@@ -340,13 +338,13 @@ function setDurability( player, args )
     }
     catch ( e )
     {
-        util.print("Could not convert durability value argument to an integer", player);
+        io.print("Could not convert durability value argument to an integer", player);
         return;
     }
 
     if ( durValue < 0 )
     {
-        util.print("Please enter a positive durability (or 0)", player);
+        io.print("Please enter a positive durability (or 0)", player);
         return;
     }
 
@@ -368,7 +366,7 @@ function gm( player, args )
 
     if ( gamemode == null )
     {
-        util.print("Please provide a gamemode argument (s, c, a, sp)", player);
+        io.print("Please provide a gamemode argument (s, c, a, sp)", player);
         return;
     }
 
@@ -394,7 +392,7 @@ function gm( player, args )
         gm = mc.GameMode.spectator;
         break;
     default:
-        util.print("Unknown gamemode");
+        io.print("Unknown gamemode", player);
         return;
     }
 
@@ -423,12 +421,12 @@ function gm( player, args )
 
             if ( players.length == 0 )
             {
-                util.print("Name did not match any players", player);
+                io.print("Name did not match any players", player);
                 return;
             }
             if ( players.length > 1 )
             {
-                util.print("Name matched more than one player", player);
+                io.print("Name matched more than one player", player);
                 return;
             }
 
@@ -451,7 +449,7 @@ function nick( player, args )
 
     if ( nickname == null || nickname.length == 0 )
     {
-        util.print("Please enter a nickname");
+        io.print("Please enter a nickname", player);
         return;
     }
 
@@ -491,7 +489,7 @@ function duplicate( player, args )
 
         if ( items.length == 0 )
         {
-            util.print("No equipment to duplicate", player);
+            io.print("No equipment to duplicate", player);
             return;
         }
 
@@ -510,7 +508,7 @@ function duplicate( player, args )
                     player.dimension.spawnItem( items[ i ], player.location );
                 }                
             }
-            util.print("Successfully duplicated equipment");
+            io.print("Successfully duplicated equipment", player);
         });
         return;
     }
@@ -519,7 +517,7 @@ function duplicate( player, args )
 
     if ( mainHand == null )
     {
-        util.print("Please hold the item you would like to duplicate in your main hand", player);
+        io.print("Please hold the item you would like to duplicate in your main hand", player);
         return;
     }
 
@@ -535,7 +533,7 @@ function duplicate( player, args )
         {
             player.dimension.spawnItem( mainHand, player.location );
         }
-        util.print("Successfully duplicated item");
+        io.print("Successfully duplicated item", player);
     });
 }
 
@@ -567,7 +565,7 @@ function parseArguments( str )
 
             if ( nextQuoteIndex == -1 )
             {
-                util.print("Please close quoted arguments");
+                io.print("Please close quoted arguments", player);
                 return [];
             }
 
@@ -576,7 +574,7 @@ function parseArguments( str )
 
             if ( i < str.length && str[ i ] != ' ' )
             {
-                util.print("Be sure that arguments are separated by spaces");
+                io.print("Be sure that arguments are separated by spaces", player);
                 return [];
             }
             
@@ -588,7 +586,7 @@ function parseArguments( str )
 
         if ( nextSpaceIndex == i )
         {
-            util.print("Please only separate arguments by one space");
+            io.print("Please only separate arguments by one space", player);
             return [];
         }
 
@@ -624,13 +622,13 @@ export function runCommand( player, commandStr )
 
     if ( command == null )
     {
-        util.print( "Could not find specified command: " + parts[ 0 ], player );
+        io.print( "Could not find specified command: " + parts[ 0 ], player );
         return;
     }
 
     if ( command.requiresOp && !player.isOp() )
     {
-        util.print("You do not have permission to use this command");
+        io.print("You do not have permission to use this command", player);
         return;
     }
 

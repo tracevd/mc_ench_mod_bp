@@ -87,6 +87,28 @@ export class BowReleaseEvent
     projectile;
 }
 
+export class ProjectileHitBlockEvent
+{
+    constructor( player, projectile, blockHit )
+    {
+        this.player = player;
+        this.projectile = projectile;
+        this.blockHit = blockHit;
+    }
+
+    /** @type { mc.Player } */
+    player;
+
+    /** @type { mc.Entity } */
+    projectile;
+
+    /** @type { mc.BlockHitInformation } */
+    blockHit;
+
+    /** @type { boolean } */
+    removeProjectile = false;
+}
+
 export class BreakBlockEvent
 {
     /**

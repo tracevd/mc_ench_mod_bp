@@ -3,7 +3,7 @@
 	"minecraft:item": {
 		"description": {
 			"category": "equipment",
-			"identifier": "ench:obsidian_pickaxe"
+			"identifier": "tench:obsidian_pickaxe"
 		},
 		"components": {
 			"minecraft:display_name": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_obsidian_pickaxe"
+				"texture": "tench_obsidian_pickaxe"
 			},
 			"minecraft:repairable": {
 				"repair_items": [
@@ -34,7 +34,7 @@
 					},
 					{
 						"items": [
-							"ench:obsidian_pickaxe"
+							"tench:obsidian_pickaxe"
 						],
 						"repair_amount": "query.max_durability*0.5"
 					}
@@ -55,69 +55,145 @@
 				"destroy_speeds": [
 					{
 						"block": {
-							"tags": "query.any_tag('stone', 'metal', 'diamond_pick_diggable', 'rail', 'mob_spawner')"
+							"tags": "query.any_tag('stone', 'metal', 'diamond_pick_diggable', 'rail', 'mob_spawner', 'deepslate')"
 						},
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
+					},
+					{
+						"block": "minecraft:deepslate",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:deepslate_bricks",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:deepslate_brick_slab",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:deepslate_brick_stairs",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:deepslate_brick_wall",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:cobbled_deepslate",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:cobbled_deepslate_stairs",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:cobbled_deepslate_slab",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:cobbled_deepslate_wall",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_deepslate",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_deepslate_stairs",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_deepslate_slab",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_deepslate_wall",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_stairs",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_slab",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_wall",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_bricks",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_brick_stairs",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_brick_slab",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:tuff_brick_wall",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_tuff",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_tuff_stairs",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_tuff_slab",
+						"speed": 25
+					},
+					{
+						"block": "minecraft:polished_tuff_wall",
+						"speed": 25
 					},
 					{
 						"block": "minecraft:ice",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
 					},
 					{
 						"block": "minecraft:sandstone",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
 					},
 					{
 						"block": "minecraft:ancient_debris",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
 					},
 					{
 						"block": "minecraft:anvil",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
 					},
 					{
 						"block": "minecraft:crying_obsidian",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
 					},
 					{
 						"block": "minecraft:obsidian",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
 					},
 					{
 						"block": "minecraft:netherite_block",
-						"on_dig": {
-							"event": "damaged",
-							"target": "self"
-						},
-						"speed": 40
+						"speed": 25
+					},
+					{
+						"block": "minecraft:end_stone",
+						"speed": 25
+					},
+					{
+						"block": "tench:dragonscale_ore",
+						"speed": 10
 					}
 				]
 			},

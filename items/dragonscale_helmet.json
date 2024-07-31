@@ -2,7 +2,7 @@
 	"format_version": "1.18.0",
 	"minecraft:item": {
 		"description": {
-			"identifier": "ench:dragonscale_helmet",
+			"identifier": "tench:dragonscale_helmet",
 			"category": "equipment"
 		},
 		"components": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_dragonscale_helmet"
+				"texture": "tench_dragonscale_helmet"
 			},
 			"minecraft:render_offsets": "helmets",
 			"minecraft:armor": {

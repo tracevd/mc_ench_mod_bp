@@ -2,7 +2,7 @@
 	"format_version": "1.12.0",
     "minecraft:recipe_shaped": {
         "description": {
-            "identifier": "ench:craft_obsidian_helmet"
+            "identifier": "tench:craft_obsidian_helmet"
         },
         "tags": [
             "crafting_table"
@@ -13,11 +13,11 @@
         ],
         "key": {
             "#": {
-                "item": "ench:obsidian_ingot"
+                "item": "tench:obsidian_ingot"
             }
         },
         "result": {
-            "item": "ench:obsidian_helmet",
+            "item": "tench:obsidian_helmet",
             "count": 1
         }
     }

@@ -2,7 +2,7 @@
     "format_version": "1.16.100",
     "minecraft:block": {
        "description": {
-          "identifier": "ench:necromancy_table",
+          "identifier": "tench:necromancy_table",
           "menu_category": {
             "category": "construction",
             "group": "itemGroup.name.enchantingTable",
@@ -11,6 +11,7 @@
           "register_to_creative_menu": true
        },
        "components": {
+            "minecraft:custom_components": ["tench:necromancy_table"],
             "minecraft:material_instances": {
                 "*": {
                     "texture": "necromancy_table",

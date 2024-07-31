@@ -2,7 +2,7 @@
 	"format_version": "1.12.0",
     "minecraft:recipe_shaped": {
         "description": {
-            "identifier": "ench:craft_dragonscale_helmet"
+            "identifier": "tench:craft_dragonscale_helmet"
         },
         "tags": [
             "crafting_table"
@@ -13,11 +13,11 @@
         ],
         "key": {
             "#": {
-                "item": "ench:dragonscale"
+                "item": "tench:dragonscale_plating"
             }
         },
         "result": {
-            "item": "ench:dragonscale_helmet",
+            "item": "tench:dragonscale_helmet",
             "count": 1
         }
     }

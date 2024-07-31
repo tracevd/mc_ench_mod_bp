@@ -2,7 +2,7 @@
 	"format_version": "1.18.0",
 	"minecraft:item": {
 		"description": {
-			"identifier": "ench:obsidian_helmet",
+			"identifier": "tench:obsidian_helmet",
 			"category": "equipment"
 		},
 		"components": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_obsidian_helmet"
+				"texture": "tench_obsidian_helmet"
 			},
 			"minecraft:render_offsets": "helmets",
 			"minecraft:armor": {
@@ -44,7 +44,7 @@
 					},
 					{
 						"items": [
-							"ench:obsidian_helmet"
+							"tench:obsidian_helmet"
 						],
 						"repair_amount": "query.max_durability*0.4"
 					}

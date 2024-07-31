@@ -5,7 +5,7 @@
             "entries": [
                 {
                     "type": "item",
-                    "name": "ench:lucky_block",
+                    "name": "tench:lucky_block",
                     "weight": 1,
                     "functions": [
                         {

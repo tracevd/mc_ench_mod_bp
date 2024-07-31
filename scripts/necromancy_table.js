@@ -1,354 +1,11 @@
 import * as mc from "@minecraft/server";
 import * as mcui from "@minecraft/server-ui";
 
-import { getBaseSpellAndTier, isCorrupted, loreIncludes, numberToRomanNumeral, romanNumeralToNumber, secondsToTicks } from './spells/util.js';
+import { numberToRomanNumeral } from './spells/util.js';
 import * as spells from './spells/spells.js';
 
-import { WeaponEffects, BowEffects, BowReleaseEffects } from "./spells/WeaponSpells.js";
-
-import { ArmorActivateEvent, BowReleaseEvent, BreakBlockEvent, WeaponEvent } from "./spells/Events.js";
-import { ArmorSpells, initializeEntity, getEntityArmor, removeEntity } from "./spells/ArmorSpells.js";
-import { PickaxeSpells } from "./spells/PickaxeSpells.js";
-import { print } from "./util.js";
+import { print } from "./print.js";
 import { RESET } from "./spells/spell_constants.js";
-
-/**
- * Activates spells on the item in the player's main hand.
- * Effects do not activate if the player is corrupted.
- * 
- * If the there is no item in the main hand, or the item is a bow,
- * this function will do nothing.
- * 
- * @param { mc.Player } player
- * @param { mc.Entity } hitEntity
- * @param { Number } damage
- * @returns { string[] } spells activated that can be reflected
- */
-export function parseWeaponSpells( player, hitEntity, damage )
-{
-    if ( isCorrupted( player ) )
-    {
-        return [];
-    }
-
-    if ( !hitEntity.isValid() )
-    {
-        mc.world.sendMessage("Invalid entity");
-        return [];
-    }
-
-    const equip = player.getComponent("equippable");
-
-    if ( equip == null )
-    {
-        // print( player.typeId + " does not have an equippable component");
-        return [];
-    }
-
-    const item = equip.getEquipment( mc.EquipmentSlot.Mainhand );
-
-    if ( item == undefined )
-        return [];
-
-    if ( item.typeId.endsWith("bow") )
-        return [];
-    
-    /** @type {string[]} */
-    const lore = item.getLore();
-
-    if ( lore.length == 0 || lore[ 0 ] == undefined )
-    {
-        return [];
-    }
-
-    let popup_str = [""];
-
-    let extraDamage = 0;
-
-    const event = new WeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
-
-    for ( let i= 0; i < lore.length; ++i )
-    {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
-
-        extraDamage += WeaponEffects.activateEffect( baseSpell, event, tier, popup_str );
-    }
-
-    if ( popup_str[ 0 ].length > 0 && player instanceof mc.Player )
-    {
-        player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    }
-
-    return event.reflectableSpells;
-}
-
-/**
- * Activates any bow spells on the bow in the source's main hand
- * that activate on release of a projectile.
- * 
- * If the item is not a bow, this does nothing.
- * 
- * Effects do not activate if the player is corrupted.
- * @param { mc.Entity } source 
- * @param { mc.ItemStack } item
- * @param { mc.Entity } projectile
- */
-export function releaseProjectile( source, item, projectile )
-{
-    if ( !item.typeId.includes("bow") )
-        return;
-
-    if ( isCorrupted( source ) )
-    {
-        return;
-    }
-
-    const lore = item.getLore();
-
-    let popup_str = [""];
-
-    const event = new BowReleaseEvent( source, projectile );
-
-    for ( let i = 0; i < lore.length; ++i )
-    {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
-
-        const effect = BowReleaseEffects.getEffect( baseSpell );
-
-        if ( effect == null )
-            continue;
-
-        effect( event, tier, popup_str );
-    }
-
-    if ( popup_str[ 0 ].length > 0 && source instanceof mc.Player )
-    {
-        source.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    }
-}
-
-/**
- * In the entity's equipment, repairs any gear that has the UNBREAKABLE
- * spell
- * @param {mc.Entity} entity 
- */
-export function tryToRepairUnbreakableGear( entity )
-{
-    const equipment = entity.getComponent("equippable");
-
-    if ( equipment == null )
-        return;
-
-    const slots = [ mc.EquipmentSlot.Head, mc.EquipmentSlot.Chest, mc.EquipmentSlot.Legs, mc.EquipmentSlot.Feet, mc.EquipmentSlot.Mainhand, mc.EquipmentSlot.Offhand ];
-
-    for ( const slot of slots )
-    {
-        const item = equipment.getEquipment( slot );
-
-        if ( item == null || !item.getLore().includes( spells.UNBREAKABLE ) )
-            continue;
-
-        const dur = item.getComponent("durability");
-
-        if ( dur == null || dur.damage == 0 )
-            continue;
-
-        dur.damage = 0;
-        equipment.setEquipment( slot, item );
-    }
-}
-
-class ArmorActivation
-{
-    constructor( popup_str, reflectEffect, reflectLevel, evasionEffect, evasionLevel )
-    {
-        this.popup_str = popup_str;
-        this.reflectEffect = reflectEffect;
-        this.reflectLevel = reflectLevel;
-        this.evasionEffect = evasionEffect;
-        this.evasionLevel = evasionLevel;
-    }
-
-    /** @type { ((armorActivation: any) => void) | null } */
-    reflectEffect;
-
-    /** @type { number } */
-    reflectLevel;
-
-    /** @type { ((armorActivation: any) => void) | undefined } */
-    evasionEffect;
-
-    /** @type { number } */
-    evasionLevel;
-
-    /** @type { string[] } */
-    popup_str;
-}
-
-/**
- * Parses the defending entity's armor, activating any armor spells
- * that are activated on hit.
- * @param { mc.Player } defendingEntity
- * @param { mc.Entity } attackingEntity
- * @param { number } damage
- * @param { boolean } wasProjectile
- */
-export function parseArmorSpells( defendingEntity, attackingEntity, damage, wasProjectile )
-{
-    const armorInfo = getEntityArmor( defendingEntity );
-
-    if ( armorInfo == null )
-        return null;
-
-    const spells_ = armorInfo.getActivateableSpells();
-
-    if ( spells_.length == 0 )
-    {
-        return null;
-    }
-
-    const popup_str = [""];
-
-    const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ), [], wasProjectile );
-
-    let reflect;
-    let reflectLevel = 0;
-    let evasion;
-    let evasionLevel = 0;
-
-    for ( let i = 0; i < spells_.length; ++i )
-    {
-        const { baseSpell, tier } = getBaseSpellAndTier( spells_[ i ].spell );
-
-        if ( baseSpell == spells.REFLECT )
-        {
-            reflect = ArmorSpells.getEffect( spells.REFLECT );
-            reflectLevel = tier;
-            continue;
-        }
-        if ( baseSpell == spells.EVASION )
-        {
-            evasion = ArmorSpells.getEffect( spells.EVASION );
-            evasionLevel = tier;
-            continue;
-        }
-
-        event.equipmentSlot = spells_[ i ].slot;
-
-        ArmorSpells.activateEffect( baseSpell, event, tier, popup_str );
-    }
-
-    return new ArmorActivation( popup_str, reflect, reflectLevel, evasion, evasionLevel );
-}
-
-/**
- * Parses the bow spells on the bow currently in the player's main hand.
- * Only parses effects that activate on entity hit.
- * @param {mc.Player} player 
- * @param {mc.Entity} hitEntity 
- * @param {number} damage The amount of damage done to the hitEntity
- * @returns { string[] } spells activated that are reflectable
- */
-export function parseBowSpells( player, hitEntity, damage )
-{
-    if ( isCorrupted( player ) )
-    {
-        return [];
-    }
-
-    if ( !hitEntity.isValid() )
-    {
-        mc.world.sendMessage("Invalid entity");
-        return [];
-    }
-
-    const equip = player.getComponent("equippable");
-
-    if ( equip == null )
-    {
-        //util.print( player.typeId + " does not have an equippable component");
-        return [];
-    }
-
-    const item = equip.getEquipment( mc.EquipmentSlot.Mainhand );
-
-    if ( item == undefined )
-        return [];
-
-    if ( !item.typeId.endsWith("bow") )
-        return [];
-    
-    /** @type {string[]} */
-    const lore = item.getLore();
-
-    if ( lore.length == 0 || lore[ 0 ] == undefined )
-    {
-        return [];
-    }
-
-    let popup_str = [""];
-
-    let extraDamage = 0;
-
-    const event = new WeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
-
-    for ( let i = 0; i < lore.length; ++i )
-    {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
-
-        const effect = BowEffects.getEffect( baseSpell );
-
-        if ( effect == null )
-        {
-            continue;
-        }
-
-        extraDamage += effect( event, tier, popup_str );
-    }
-
-    if ( popup_str[ 0 ].length > 0 && player instanceof mc.Player )
-    {
-        player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-    }
-
-    return event.reflectableSpells;
-}
-
-/**
- * @param {mc.Player} player 
- * @param {mc.ItemStack} pickaxe 
- * @param {mc.Block} block 
- * @returns 
- */
-export function parsePickaxeSpells( player, pickaxe, block )
-{
-    const lore = pickaxe.getLore();
-
-    if ( lore.length == 0 )
-    {
-        return false;
-    }
-
-    let popup_str = [""];
-
-    const event = new BreakBlockEvent( player, pickaxe, block );
-
-    for ( let i = 0; i < lore.length; ++i )
-    {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
-
-        PickaxeSpells.activateSpell( baseSpell, event, tier, popup_str );
-    }
-
-    if ( popup_str[ 0 ].length > 0 )
-    {
-        mc.system.run( () => {
-            player.onScreenDisplay.setActionBar( popup_str[ 0 ] );
-        });
-    }
-
-    return event.cancelBlockBreak;
-}
 
 function addSpellToWeapon( player, weapon, spell_tier )
 {
@@ -366,7 +23,7 @@ function addSpellToWeapon( player, weapon, spell_tier )
 
     weapon.setLore( lore_ );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlot, weapon );
+    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, weapon );
 
     return true;
 }
@@ -385,7 +42,7 @@ function addSpellToArmor( player, armor, spell_tier )
 
     armor.setLore( lore_ );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlot, armor );
+    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, armor );
 
     return true;
 }
@@ -404,7 +61,7 @@ function addSpellToBow( player, bow, spell_tier )
 
     bow.setLore( lore_ );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlot, bow );
+    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, bow );
 
     return true;
 }
@@ -423,7 +80,7 @@ function addSpellToPickaxe( player, pick, spell_tier )
 
     pick.setLore( lore_ );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlot, pick );
+    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, pick );
 
     return true;
 }
@@ -433,7 +90,7 @@ function clearLore( player, item )
     if ( item.getLore() == undefined || item.getLore().length == 0 )
         return false;
     item.setLore([]);
-    player.getComponent("inventory").container.setItem( player.selectedSlot, item );
+    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, item );
     return true;
 }
 
@@ -448,8 +105,91 @@ function clearLastLore( player, item )
     lore.pop();
     item.setLore( lore );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlot, item );
+    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, item );
     return true;
+}
+
+class ItemType
+{
+    static get VOID()    { return 0; }
+    static get WEAPON()  { return 1; }
+    static get ARMOR()   { return 2; }
+    static get BOW()     { return 3; }
+    static get PICKAXE() { return 4; }
+    static get BOOK()    { return 5; }
+}
+
+/**
+ * @param { mc.ItemStack } item 
+ */
+function getItemType( item )
+{
+    if ( item.typeId.includes("sword")
+      || item.typeId.includes("_axe") )
+        return ItemType.WEAPON;
+
+    if ( item.typeId.includes("helmet")
+      || item.typeId.includes("chestplate")
+      || item.typeId.includes("leggings")
+      || item.typeId.includes("boots") )
+        return ItemType.ARMOR;
+
+    if ( item.typeId.endsWith('bow') )
+        return ItemType.BOW;
+
+    if ( item.typeId.includes('ickaxe') )
+        return ItemType.PICKAXE;
+
+    if ( item.typeId.includes("book") )
+        return ItemType.BOOK;
+
+    return ItemType.VOID;
+}
+
+function getMaxSpellCountForItemType( type )
+{
+    switch ( type )
+    {
+    case ItemType.WEAPON:  return 3;
+    case ItemType.ARMOR:   return 1;
+    case ItemType.BOW:     return 3;
+    case ItemType.PICKAXE: return 1;
+    case ItemType.BOOK:    return 1;
+    }
+
+    return 0;
+}
+
+function getItemTypeName( type )
+{
+    switch ( type )
+    {
+    case ItemType.WEAPON:  return "weapon";
+    case ItemType.ARMOR:   return "armor";
+    case ItemType.BOW:     return "bow";
+    case ItemType.PICKAXE: return "pickaxe";
+    case ItemType.BOOK:    return "book";
+    }
+
+    return "unknown";
+}
+
+function getAllSpellsForType( type )
+{
+    switch ( type )
+    {
+    case ItemType.WEAPON:  return spells.getAllWeaponSpells();
+    case ItemType.ARMOR:   return spells.getAllArmorSpells();
+    case ItemType.BOW:     return spells.getAllBowSpells();
+    case ItemType.PICKAXE: return spells.getAllPickaxeSpells();
+    }
+
+    throw new Error("Unknown item type");
+}
+
+function removeLevels( player, levels )
+{
+    player.runCommandAsync("xp -" + levels.toString() + "L @s");
 }
 
 /**
@@ -488,7 +228,7 @@ export function showNecromancyTable( player, item )
         /** @type number */
         const selection = response.selection + 1;
 
-        const required_levels = [5, 10, 15, 20, 25, 5, 0, 0];
+        const required_levels = [ 5, 10, 15, 20, 25, 5, 0, 0 ];
 
         const required_level = required_levels[ selection - 1 ];
 
@@ -504,42 +244,34 @@ export function showNecromancyTable( player, item )
         const REMOVE_LORE = 7;
         const SPECIFIC    = 8;
 
-        const isWeapon = item.typeId.includes("sword") || item.typeId.includes("_axe");
-        const isArmor  = item.typeId.includes("helmet") || item.typeId.includes("chestplate") || item.typeId.includes("leggings") || item.typeId.includes("boots");
-        const isBook   = item.typeId.includes("book");
-        const isBow    = item.typeId.endsWith('bow');
-        const isPick   = item.typeId.includes('ickaxe');
+        const itemType = getItemType( item );
+
+        if ( itemType == ItemType.VOID )
+        {
+            print("This item can't be used!", player);
+            return;
+        }
 
         if ( selection != REMOVE_LAST && selection != REMOVE_LORE )
         {
-            if ( isArmor && item.getLore().length >= 1 )
+            const maxSpellCount = getMaxSpellCountForItemType( itemType );
+
+            if ( item.getLore().length >= maxSpellCount )
             {
-                print("Cannot add more than 1 spell to a piece of armor!", player);
-                return;
-            }
-            else if ( ( isWeapon || isBow ) && item.getLore().length >= 3 )
-            {
-                print("Cannot add more than 3 spells to a weapon!", player);
-                return;
-            }
-            else if ( isPick && item.getLore().length >= 1 )
-            {
-                print("Cannot add more than 1 spell to a pickaxe!", player);
+                print("Cannot add more than " + maxSpellCount + " spell(s) to an item of type: " + getItemTypeName( itemType ), player );
                 return;
             }
         }
 
         if ( selection == SPECIFIC )
         {
-            if ( isBook )
+            if ( itemType == ItemType.BOOK )
             {
                 print("Cannot select specific spell for a book", player);
                 return;
             }
-            const infos = isWeapon ? spells.getAllWeaponSpells()
-                        : isArmor ? spells.getAllArmorSpells()
-                        : isPick ? spells.getAllPickaxeSpells()
-                        : spells.getAllBowSpells();
+
+            const infos = getAllSpellsForType( itemType );
 
             const spellNames = infos.map( info => info.name );
 
@@ -565,7 +297,7 @@ export function showNecromancyTable( player, item )
                 {
                     if ( lore[ i ].startsWith( selectedInfo.name ) )
                     {
-                        print("This item already has this spell on it!");
+                        print("This item already has this spell on it!", player);
                         return;
                     }
                 }
@@ -621,7 +353,7 @@ export function showNecromancyTable( player, item )
 
                     if ( player.level < required_level )
                     {
-                        print("You do not have enough levels (need " + required_level.toString() + ")", player);
+                        print("You do not have enough levels! (need " + required_level.toString() + ")", player);
                         return;
                     }
 
@@ -631,17 +363,17 @@ export function showNecromancyTable( player, item )
 
                     item.setLore( lore );
 
-                    print(required_level, player);
-
-                    player.getComponent("inventory").container.setItem( player.selectedSlot, item );
-                    player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+                    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, item );
+                    removeLevels( player, required_level );
                 });
             });
 
             return;
         }
 
-        if ( isWeapon )
+        switch ( itemType )
+        {
+        case ItemType.WEAPON:
         {
             if ( selection == REMOVE_LORE ) 
             {
@@ -652,11 +384,12 @@ export function showNecromancyTable( player, item )
             
             else if ( selection < REMOVE_LAST && !addSpellToWeapon( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+            removeLevels( player, required_level );
+            return;
         }
-        else if ( isArmor )
+        case ItemType.ARMOR:
         {
-            if ( selection == REMOVE_LORE ) 
+            if ( selection == REMOVE_LORE )
             {
                 clearLore( player, item );
                 return;
@@ -665,25 +398,10 @@ export function showNecromancyTable( player, item )
 
             else if ( selection < REMOVE_LAST && !addSpellToArmor( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+            removeLevels( player, required_level );
+            return;
         }
-        else if ( isBook )
-        {
-            if ( selection == REMOVE_LORE )
-            {
-                player.getComponent("inventory").container.setItem( player.selectedSlot, new mc.ItemStack( "book", 1 ) );
-            }
-            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
-            else
-            {
-                const convertTierToBookTier = ['I', 'I', 'II', 'V', 'X'];
-                player.runCommandAsync("clear @s book 0 1");
-                player.runCommandAsync("function tier" + convertTierToBookTier[ spell_tier - 1 ] );
-            }
-            
-            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
-        }
-        else if ( isBow )
+        case ItemType.BOW:
         {
             if ( selection === REMOVE_LORE )
             {
@@ -693,9 +411,10 @@ export function showNecromancyTable( player, item )
             else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
             else if ( selection < REMOVE_LAST && !addSpellToBow( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+            removeLevels( player, required_level );
+            return;
         }
-        else if ( isPick )
+        case ItemType.PICKAXE:
         {
             if ( selection === REMOVE_LORE )
             {
@@ -705,9 +424,28 @@ export function showNecromancyTable( player, item )
             else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
             else if ( selection < REMOVE_LAST && !addSpellToPickaxe( player, item, spell_tier ) ) return;
 
-            player.runCommandAsync("xp -" + required_level.toString() + "L @s");
+            removeLevels( player, required_level );
+            return;
         }
-    })
+        case ItemType.BOOK:
+        {
+            if ( selection == REMOVE_LORE )
+            {
+                player.getComponent("inventory").container.setItem( player.selectedSlotIndex, new mc.ItemStack( "book", 1 ) );
+            }
+            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
+            else
+            {
+                const convertTierToBookTier = ['I', 'I', 'II', 'V', 'X'];
+                player.runCommandAsync("clear @s book 0 1");
+                player.runCommandAsync("function tier" + convertTierToBookTier[ spell_tier - 1 ] );
+            }
+            
+            removeLevels( player, required_level );
+            return;
+        }
+        }
+    });
 }
 
 /**
@@ -723,44 +461,4 @@ export function itemIsArmor( item )
 export function itemIsNotArmor( item )
 {
     return !itemIsArmor( item );
-}
-
-export function createArmorChecker( entity )
-{
-    initializeEntity( entity );
-}
-
-export function entityDied( entity )
-{
-    if ( entity == null )
-        return;
-
-    const armor = getEntityArmor( entity );
-
-    if ( armor == null )
-    {
-        return;
-    }
-
-    armor.entityDied();
-}
-
-export function entityRespawned( entity )
-{
-    if ( entity == null )
-        return;
-
-    const armor = getEntityArmor( entity );
-
-    if ( armor == null )
-    {
-        return;
-    }
-
-    armor.entityRespawned();
-}
-
-export function removeArmorChecker( entity )
-{
-    removeEntity( entity );
 }

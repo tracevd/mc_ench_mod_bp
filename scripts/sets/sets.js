@@ -154,7 +154,7 @@ createSet( "King's Guard",
 
 createSet( "King",
 [
-    createItem("ench:obsidian_helmet", "King's Helmet",
+    createItem("tench:obsidian_helmet", "King's Helmet",
     [
         createEnchantment("protection", 4),
         createEnchantment("unbreaking", 3)
@@ -162,7 +162,7 @@ createSet( "King",
     [
         spells.INTIMIDATION + "III"
     ]),
-    createItem("ench:obsidian_chestplate", "King's Chestplate",
+    createItem("tench:obsidian_chestplate", "King's Chestplate",
     [
         createEnchantment("protection", 4),
         createEnchantment("thorns", 3),
@@ -171,16 +171,16 @@ createSet( "King",
     [
         spells.RESILIENCE + "II"
     ]),
-    createItem("ench:obsidian_leggings", "King's Leggings",
+    createItem("tench:obsidian_leggings", "King's Leggings",
     [
         createEnchantment("protection", 4),
         createEnchantment("thorns", 3),
         createEnchantment("unbreaking", 3)
     ],
     [
-        spells.LASTSTAND
+        spells.LASTSTAND + "I"
     ]),
-    createItem("ench:obsidian_boots", "King's Boots",
+    createItem("tench:obsidian_boots", "King's Boots",
     [
         createEnchantment("protection", 4),
         createEnchantment("feather_falling", 4),
@@ -189,7 +189,7 @@ createSet( "King",
     [
         spells.EXTINGUISH + "II"
     ]),
-    createItem("ench:obsidian_sword", "King's Sword",
+    createItem("tench:obsidian_sword", "King's Sword",
     [
         createEnchantment("sharpness", 5),
         createEnchantment("fire_aspect", 2),

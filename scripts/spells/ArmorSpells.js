@@ -2,80 +2,13 @@ import * as mc from '@minecraft/server';
 
 import * as spells from "./spells.js";
 import * as util from "./util.js";
-import { ArmorActivateEvent, WeaponEvent } from './Events.js';
+import { ArmorActivateEvent, WeaponEvent } from './events.js';
 
 import { Vector } from '../Vector.js';
 
-import * as io from "../util.js";
+import { StringRef } from '../StringRef.js';
 
-const nonRemoveableTags = new Set( [] );
-
-function clearTags( entity )
-{
-    mc.system.run( () => {
-        if ( entity.isValid() )
-        {
-            const tags = entity.getTags();
-            for ( let i = 0; i < tags.length; ++i )
-            {
-                if ( nonRemoveableTags.has( tags[ i ] ) )
-                    continue;
-                entity.removeTag( tags[ i ] );
-            }
-        }
-    });
-}
-
-/**
- * @param { mc.Entity } entity 
- */
-export function initializeEntity( entity )
-{
-    if ( entity == null )
-    {
-        mc.world.sendMessage("Null entity");
-        return;
-    }
-
-    clearTags( entity );
-
-    const equippable = entity.getComponent("equippable");
-
-    if ( equippable == null )
-    {
-        return;
-    }
-
-    entities.set( entity.id, new EntityArmor( entity ) );
-}
-
-export function getEntityArmor( entity )
-{
-    if ( entity == null )
-        return null;
-
-    return entities.get( entity.id );
-}
-
-export function removeEntity( entity )
-{
-    if ( entity == null )
-        return;
-
-    const armor = entities.get( entity.id );
-
-    if ( armor != null )
-    {
-        armor.clear();
-
-        entities.delete( entity.id );
-    }
-
-    clearTags( entity );
-}
-
-/** @type { Map< string, EntityArmor } > */
-const entities = new Map();
+import { isCorrupted, getBaseSpellAndTier } from './util.js';
 
 export class ArmorSpells
 {
@@ -105,7 +38,7 @@ export class ArmorSpells
         const effect = ArmorSpells.#spells.get( name );
 
         if ( effect == null )
-            throw new Error("Cannot get armor effect: " + name );
+            return;
 
         effect( event, spellTier, outputString );
     }
@@ -116,360 +49,16 @@ export class ArmorSpells
     }
 }
 
-class ArmorCallBacks
-{
-    /** @type { Map< string, ArmorCallBack > } */
-    static #callBacks = new Map();
-
-    static addCallBack( name, callBack )
-    {
-        ArmorCallBacks.#callBacks.set( name, callBack );
-    }
-
-    static getCreationCallback( name )
-    {
-        const callback = ArmorCallBacks.#getCallBack( name );
-
-        return callback.create;
-    }
-
-    static getDestructionCallback( name )
-    {
-        const callback = ArmorCallBacks.#getCallBack( name );
-
-        return callback.destroy;
-    }
-
-    static hasCallBack( name )
-    {
-        return ArmorCallBacks.#callBacks.get( name ) != null;
-    }
-
-    static hasDestructor( name )
-    {
-        const callback = ArmorCallBacks.#callBacks.get( name );
-
-        return callback != null && callback.destroy != null;
-    }
-
-    static #getCallBack( name )
-    {
-        const callback = ArmorCallBacks.#callBacks.get( name );
-
-        if ( callback == null )
-        {
-            throw new Error("Cannot get armor callback: " + name );
-        }
-
-        return callback;
-    }
-}
-
-class ArmorCallBack
-{
-    constructor( create, destroy = null )
-    {
-        this.create = create;
-        this.destroy = destroy;
-    }
-
-    /** @type { (entity, spellTier) => ( number | null ) } */
-    create;
-    /** @type { null | (entity) => void } */
-    destroy;
-}
-
-class ArmorSpellAndSlot
-{
-    spell;
-    slot;
-}
-
-mc.system.runInterval( () =>
-    {
-        // const start = Date.now();
-
-        const players = mc.world.getAllPlayers();
-
-        for ( let i = 0; i < players.length; ++i )
-        {
-            if ( players[ i ].hasTag('dead') )
-            {
-                continue;
-            }
-
-            const armor = entities.get( players[ i ].id );
-
-            const equipment = players[ i ].getComponent('minecraft:equippable');
-
-            if ( equipment == null )
-            {
-                io.print( entity.typeId + " had a null equipment component" );
-                return;
-            }
-
-            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Head  );
-            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Chest );
-            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Legs  );
-            armor.updateArmorSlot( equipment, mc.EquipmentSlot.Feet  );
-        }
-
-        // const end = Date.now();
-
-        // io.print( ( end - start ) + "ms" );
-    },
-    util.secondsToTicks( 1 )
-);
-
-class EntityArmor
-{
-    constructor( entity )
-    {
-        if ( entity == null )
-        {
-            throw new Error("Null entity");
-        }
-
-        this.#entity = entity;
-        this.#callbacks = [null, null, null, null];
-    }
-
-    /**
-     * 
-     * @param {mc.EntityEquippableComponent} equipment 
-     * @param {mc.EquipmentSlot} slot 
-     */
-    updateArmorSlot( equipment, slot )
-    {
-        const item = equipment.getEquipment( slot );
-
-        this.updateArmorSpell( item, slot );
-
-        if ( item != null && item.getLore().includes( spells.UNBREAKABLE ) )
-        {
-            const durability = item.getComponent("durability");
-            durability.damage = 0;
-            equipment.setEquipment( slot, item );
-        }
-    }
-
-    /**
-     * Returns all spells on a player's armor
-     * @returns { string[] }
-     */
-    getAllSpells()
-    {
-        const ret = [];
-        for ( const val in this.#armorSpells )
-        {
-            if ( val.length > 0 )
-            {
-                ret.push( val );
-            }
-        }
-        return ret;
-    }
-
-    /**
-     * Return all spells that have an activation function
-     * rather than a callback
-     * @returns { ArmorSpellAndSlot[] }
-     */
-    getActivateableSpells()
-    {
-        const ret = [];
-        for ( let i = 0; i < this.#armorSpells.length; ++i )
-        {
-            const spell = this.#armorSpells[ i ];
-
-            if ( spell != "" && ArmorSpells.hasActivateableEffect( util.getBaseSpell( spell ) ) )
-            {
-                ret.push( { spell: spell, slot: EntityArmor.#indexToSlot( i ) } );
-            }
-        }
-        return ret;
-    }
-
-    /**
-     * Set a given armor slot's spell
-     * @param {mc.ItemStack | null} armor
-     * @param {string} slot 
-     */
-    updateArmorSpell( armor, slot )
-    {
-        const index = EntityArmor.#slotToIndex( slot );
-
-        const lore = armor == null ? "" : armor.getLore()[ 0 ];
-
-        if ( armor != null && this.#armorSpells[ index ] == lore )
-            return;
-
-        this.#removeSpellAt( index );
-
-        if ( armor != null && lore != null )
-        {
-            this.#addSpellAt( index, armor );
-        }
-    }
-
-    /**
-     * Clear a player's armor effects
-     */
-    clear()
-    {
-        for ( let i = 0; i < this.#armorSpells.length; ++i )
-        {
-            this.#removeSpellAt( i );
-        }
-
-        mc.system.run( () => {
-            if ( this.#entity.isValid() )
-                this.#entity.removeTag( "dead" );
-        });
-        
-        // mc.system.clearRun( this.#entityCallBack );
-    }
-
-    entityDied()
-    {
-        this.#entity.addTag( "dead" );
-
-        for ( let i = 0; i < this.#armorSpells.length; ++i )
-        {
-            this.#removeSpellAt( i );
-        }
-    }
-
-    entityRespawned()
-    {
-        this.#entity.removeTag( "dead" );
-    }
-
-    /**
-     * @param {number} index 
-     */
-    #removeSpellAt( index )
-    {
-        if ( this.#armorSpells[ index ] == "" )
-        {
-            return;
-        }
-
-        if ( this.#callbacks[ index ] != null )
-        {
-            mc.system.clearRun( this.#callbacks[ index ] );
-            this.#callbacks[ index ] = null;
-        }
-
-        const baseSpell = util.getBaseSpell( this.#armorSpells[ index ] );
-
-        if ( ArmorCallBacks.hasDestructor( baseSpell ) )
-        {
-            const destructor = ArmorCallBacks.getDestructionCallback( baseSpell );
-            destructor( this.#entity );
-        }
-
-        this.#armorSpells[ index ] = "";
-    }
-
-    /**
-     * @param {string} spell 
-     * @param {number} ignoreIndex 
-     */
-    #alreadyHasSpell( spell, ignoreIndex = -1 )
-    {
-        if ( spell == spells.UNBREAKABLE )
-            return false;
-
-        for ( let i = 0; i < this.#armorSpells.length; ++i )
-        {
-            if ( i == ignoreIndex )
-                continue;
-
-            if ( util.getBaseSpell( this.#armorSpells[ i ] ) == util.getBaseSpell( spell ) )
-            {
-                io.print("Already has spell: " + spell );
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @param {number} index 
-     * @param {ItemStack} armor 
-     */
-    #addSpellAt( index, armor )
-    {
-        const lore = armor.getLore()[ 0 ];
-
-        if ( this.#alreadyHasSpell( lore ) )
-            return;
-
-        const { baseSpell, tier } = util.getBaseSpellAndTier( lore );
-
-        if ( ArmorCallBacks.hasCallBack( baseSpell ) )
-        {
-            const callback = ArmorCallBacks.getCreationCallback( baseSpell );
-
-            const ptr = callback( this.#entity, tier );
-
-            this.#callbacks[ index ] = ptr;
-        }
-        
-        this.#armorSpells[ index ] = lore;
-    }
-
-    static #slotToIndex( slot )
-    {
-        switch ( slot )
-        {
-        case mc.EquipmentSlot.Head:
-            return 0;
-        case mc.EquipmentSlot.Chest:
-            return 1;
-        case mc.EquipmentSlot.Legs:
-            return 2;
-        case mc.EquipmentSlot.Feet:
-            return 3;
-        default:
-            throw new Error("Unknown equipment slot!");
-        }
-    }
-
-    static #indexToSlot( index )
-    {
-        switch ( index )
-        {
-        case 0:
-            return mc.EquipmentSlot.Head;
-        case 1:
-            return mc.EquipmentSlot.Chest;
-        case 2:
-            return mc.EquipmentSlot.Legs;
-        case 3:
-            return mc.EquipmentSlot.Feet;
-        default:
-            throw new Error("Invalid index to convert to equipment slot!");
-        }
-    }
-
-    /** @type { string[] } */
-    #armorSpells = ["", "", "", ""];
-    /** @type { ( null | number )[] } */
-    #callbacks = [null, null, null, null];
-    /** @type { mc.Entity } */
-    #entity;
-}
-
 // EFFECTS
 
-import * as we from "./WeaponSpells.js";
+import { WeaponEffects } from "./WeaponSpells.js";
+import { print } from '../print.js';
+import { BowEffects } from './BowSpells.js';
 
 /**
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
- * @param {string[]} outputString 
+ * @param {StringRef} outputString 
  */
 function reflect( event, spellTier, outputString )
 {
@@ -481,7 +70,6 @@ function reflect( event, spellTier, outputString )
 
     if ( reflectableSpells.length == 0 )
     {
-        // io.print("Nothing to reflect", event.target);
         return;
     }
 
@@ -521,17 +109,26 @@ function reflect( event, spellTier, outputString )
 
     const romanNum = refSpellTier == 0 ? "" : util.numberToRomanNumeral( refSpellTier );
 
-    util.addEffectToOutputString( outputString, spells.REFLECT + spells.RESET +  ": " + baseSpell + romanNum );
+    outputString.addWithNewLine( spells.REFLECT + spells.RESET +  ": " + baseSpell + romanNum )
 
     const hhEvent = new WeaponEvent( event.source, event.target, event.damage, false, true );
 
-    we.WeaponEffects.activateEffect( baseSpell, hhEvent, refSpellTier, outputString );
+    if ( event.causedByProjectile )
+    {
+        BowEffects.activateEffect( baseSpell, hhEvent, refSpellTier, outputString );
+    }
+    else
+    {
+        WeaponEffects.activateEffect( baseSpell, hhEvent, refSpellTier, outputString );
+    }
+
+    
 }
 
 /**
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
- * @param {string[]} outputString 
+ * @param {StringRef} outputString 
  */
 function lastStand( event, spellTier, outputString )
 {
@@ -544,8 +141,7 @@ function lastStand( event, spellTier, outputString )
 
     if ( health.currentValue < 5 )
     {
-        // io.print("Activated last stand", event.target);
-        util.addEffectToOutputString( outputString, spells.LASTSTAND );
+        outputString.addWithNewLine( spells.LASTSTAND );
         event.target.addEffect("strength", util.secondsToTicks(10), {amplifier: 1, showParticles: true});
         event.target.addEffect("absorption", util.secondsToTicks(10), {amplifier: 4, showParticles: false});
         event.target.addEffect("regeneration", util.secondsToTicks(10), {amplifier: 1, showParticles: false});
@@ -556,7 +152,7 @@ function lastStand( event, spellTier, outputString )
 /**
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
- * @param {string[]} outputString 
+ * @param {StringRef} outputString 
  */
 function magmaArmor( event, spellTier, outputString )
 {
@@ -579,7 +175,7 @@ function magmaArmor( event, spellTier, outputString )
         return;
     }
 
-    util.addEffectToOutputString( outputString, spells.MAGMA_ARMOR );
+    outputString.addWithNewLine( spells.MAGMA_ARMOR );
 
     event.source.setOnFire( util.secondsToTicks( spellTier + 1 ), false );
 
@@ -589,7 +185,7 @@ function magmaArmor( event, spellTier, outputString )
 /**
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
- * @param {string[]} outputString 
+ * @param {StringRef} outputString 
  */
 function push( event, spellTier, outputString )
 {
@@ -600,9 +196,9 @@ function push( event, spellTier, outputString )
 
     const direction = Vector.normalize( Vector.subtract( event.source.location, event.target.location ) );
 
-    const impulse = direction.multiply( 0.3 * spellTier );
+    const impulse = Vector.multiply( direction, 0.3 * spellTier );
 
-    util.addEffectToOutputString( outputString, spells.PUSH );
+    outputString.addWithNewLine( spells.PUSH );
 
     try
     {
@@ -618,7 +214,7 @@ function push( event, spellTier, outputString )
 /**
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
- * @param {string[]} outputString 
+ * @param {StringRef} outputString 
  */
 function evasion( event, spellTier, outputString )
 {
@@ -637,7 +233,7 @@ function evasion( event, spellTier, outputString )
     if ( spellTier * 5 > rand )
     {
         event.evaded = true;
-        util.addEffectToOutputString( outputString, spells.EVASION );
+        outputString.addWithNewLine( spells.EVASION );
         health.setCurrentValue( health.currentValue + event.damage );
     }
 }
@@ -645,7 +241,7 @@ function evasion( event, spellTier, outputString )
 /**
  * @param {ArmorActivateEvent} event 
  * @param {number} spellTier 
- * @param {string[]} outputString 
+ * @param {StringRef} outputString 
  */
 function unbreakable( event, spellTier, outputString )
 {
@@ -659,233 +255,121 @@ ArmorSpells.addEffect( spells.PUSH,        push );
 ArmorSpells.addEffect( spells.EVASION,     evasion );
 ArmorSpells.addEffect( spells.UNBREAKABLE, unbreakable );
 
-// CALLBACKS
-
-function createImmunity( entity, spellTier )
+class ArmorActivation
 {
-    return mc.system.runInterval( () =>
+    constructor( outputString, reflectEffect, reflectLevel, evaded )
     {
-        if ( util.isCorrupted( entity ) )
-        {
-            return;
-        }
+        this.outputString = outputString;
+        this.reflectEffect = reflectEffect;
+        this.reflectLevel = reflectLevel;
+        this.evaded = evaded;
+    }
 
-        if ( entity.getEffect( 'poison' ) != undefined )
-        {
-            const rand = Math.random();
-            if ( rand < spellTier / 7 )
-                entity.removeEffect("poison");
-        }
-    }, util.secondsToTicks( 1.5 ) );
+    /** @type { ((armorActivation: any) => void) | null } */
+    reflectEffect;
+
+    /** @type { number } */
+    reflectLevel;
+
+    /** @type { boolean } */
+    evaded;
+
+    /** @type { StringRef } */
+    outputString;
 }
 
-function createExtinguish( entity, spellTier )
+class ArmorSpellAndSlot
 {
-    return mc.system.runInterval( () =>
-    {
-        if ( util.isCorrupted( entity ) )
-        {
-            return;
-        }
-
-        if ( entity.getComponent( "minecraft:onfire" ) == undefined )
-        {
-            return;
-        }
-
-        const rand = Math.random();
-
-        if ( rand < spellTier / 8 )
-        {
-            entity.extinguishFire( false );
-        }
-    }, util.secondsToTicks( 1 ) );
-}
-
-function createIntimidation( entity, spellTier )
-{
-    const range = ( spellTier + 7 ) / 2;
-    
-    return mc.system.runInterval( () =>
-    {
-        if ( util.isCorrupted( entity ) )
-        {
-            return;
-        }
-
-        const entities = entity.dimension.getEntities({ location: entity.location, maxDistance: range, excludeFamilies: ["inanimate"], excludeTypes: ["item"] });
-
-        for ( let i = 0; i < entities.length; ++i )
-        {
-            if ( entities[ i ].id == entity.id )
-                continue;
-
-            entities[ i ].addEffect("mining_fatigue", util.secondsToTicks(spellTier), {amplifier: 2});
-            entities[ i ].addEffect("nausea", util.secondsToTicks(spellTier), {amplifier: spellTier - 1});
-            entities[ i ].addEffect("slowness", util.secondsToTicks(spellTier), {amplifier: 0});
-        }
-    }, util.secondsToTicks( 10 ) )
-}
-
-function createSteadfast( entity, spellTier )
-{
-    entity.addEffect("resistance", util.secondsToTicks(9999), {amplifier: 0, showParticles: false});
-    return null;
-}
-function destroySteadfast( entity )
-{
-    mc.system.run(() =>
-    {
-        if ( entity.isValid() )
-        {
-            entity.removeEffect("resistance");
-        }
-    });
-}
-
-function createResilience( entity, spellTier )
-{
-    const amplifier = spellTier - 1;
-    entity.addEffect("health_boost", util.secondsToTicks(9999), { amplifier: amplifier, showParticles: false });
-    entity.addEffect("regeneration", util.secondsToTicks(1), { amplifier: 9, showParticles: false });
-    return null;
-}
-function destroyResilience( entity )
-{
-    mc.system.run(() =>
-    {
-        if ( entity.isValid() )
-        {
-            entity.removeEffect("health_boost");
-        }
-    });
-}
-
-function createLeaping( entity, spellTier )
-{
-    entity.addEffect("jump_boost", util.secondsToTicks(9999), { amplifier: 1, showParticles: false });
-    return null;
-}
-function destroyLeaping( entity )
-{
-    
-    mc.system.run(() =>
-    {
-        if ( entity.isValid() )
-        {
-            entity.removeEffect("jump_boost");
-        }
-    });
+    spell;
+    slot;
 }
 
 /**
- * @param {mc.Entity} entity 
- * @param {number} spellTier 
+ * @param { mc.Entity } entity 
  */
-function createStampede( entity, spellTier )
+function getEntityArmorSpells( entity )
 {
-    entity.setDynamicProperty("stampLevel", -1);
+    const equipment = entity.getComponent("equippable");
 
-    const maxSpeed = spellTier;
+    if ( equipment == null )
+        return [];
 
-    return mc.system.runInterval( () =>
+    const slots = [
+        mc.EquipmentSlot.Head,
+        mc.EquipmentSlot.Chest,
+        mc.EquipmentSlot.Legs,
+        mc.EquipmentSlot.Feet
+    ];
+
+    /** @type { Map< string, ArmorSpellAndSlot > } */
+    const spellSet = new Map();
+
+    for ( const slot of slots )
     {
-        /** @type number|null */
-        const speedLevel = entity.getDynamicProperty("stampLevel");
+        const armor = equipment.getEquipment( slot );
 
-        if ( speedLevel == undefined )
+        if ( armor == null || armor.getLore().length == 0 )
+            continue;
+
+        const lore = armor.getLore();
+        const baseSpell = util.getBaseSpell( lore[ 0 ] );
+
+        if ( spellSet.has( baseSpell ) )
         {
-            throw new Error("Stampede dynamic property error");
+            continue;
         }
 
-        if ( util.isCorrupted( entity ) )
-        {
-            if ( speedLevel >= 0 )
-            {
-                entity.setDynamicProperty("stampLevel", -1);
-                entity.removeEffect("speed");
-            }
-            return;
-        }
+        spellSet.set( baseSpell, { spell: lore[ 0 ], slot: slot } );
+    }
 
-        if ( entity.hasTag('stampcooldown') )
-        {
-            return;
-        }
-
-        if ( !entity.isSprinting )
-        {
-            entity.setDynamicProperty("stampLevel", -1);
-            entity.removeEffect("speed");
-
-            return;
-        }
-
-        if ( speedLevel > -1 )
-        {
-            entity.addEffect("speed", util.secondsToTicks(10), { amplifier: speedLevel, showParticles: false });
-        }
-
-        if ( speedLevel < maxSpeed && !entity.hasTag( "stampcooldown" ) )
-        {
-            entity.addTag( "stampcooldown" );
-            mc.system.runTimeout( () =>
-            {
-                if ( !entity.isSprinting )
-                {
-                    entity.removeTag("stampcooldown");
-                    entity.setDynamicProperty("stampLevel", -1);
-                    entity.removeEffect("speed");
-                    return;
-                }
-                entity.setDynamicProperty("stampLevel", speedLevel + 1 );
-                entity.addEffect("speed", util.secondsToTicks(10), { amplifier: speedLevel + 1, showParticles: false });
-                entity.removeTag( "stampcooldown" );
-            }, util.secondsToTicks( 3 ) );
-        }                           
-    }, 30 );
-}
-/**
- * @param {mc.Entity} entity 
- */
-function destroyStampede( entity )
-{    
-    mc.system.run(() =>
-    {
-        if ( entity.isValid() )
-        {
-            entity.removeEffect("speed");
-            entity.removeTag("stampcooldown");
-        }
-    });
+    return Array.from( spellSet.values() );
 }
 
 /**
- * @param {mc.Entity} entity 
+ * Parses the defending entity's armor, activating any armor spells
+ * that are activated on hit.
+ * @param { mc.Player } defendingEntity
+ * @param { mc.Entity } attackingEntity
+ * @param { number } damage
+ * @param { boolean } wasProjectile
  */
-function createClarity( entity )
+export function activateArmorSpells( defendingEntity, attackingEntity, damage, wasProjectile )
 {
-    mc.system.run( () =>
-    {
-        entity.addEffect("night_vision", util.secondsToTicks(9999), {showParticles: false} );
-    });
-}
-/**
- * @param {mc.Entity} entity 
- */
-function destroyClarity( entity )
-{
-    mc.system.run( () =>
-    {
-        entity.removeEffect('night_vision');
-    });
-}
+    const spells_ = getEntityArmorSpells( defendingEntity );
 
-ArmorCallBacks.addCallBack( spells.IMMUNITY, new ArmorCallBack( createImmunity ) );
-ArmorCallBacks.addCallBack( spells.EXTINGUISH, new ArmorCallBack( createExtinguish ) );
-ArmorCallBacks.addCallBack( spells.INTIMIDATION, new ArmorCallBack( createIntimidation ) );
-ArmorCallBacks.addCallBack( spells.STEADFAST, new ArmorCallBack( createSteadfast, destroySteadfast ) );
-ArmorCallBacks.addCallBack( spells.RESILIENCE, new ArmorCallBack( createResilience, destroyResilience ) );
-ArmorCallBacks.addCallBack( spells.LEAPING, new ArmorCallBack( createLeaping, destroyLeaping ) );
-ArmorCallBacks.addCallBack( spells.STAMPEDE, new ArmorCallBack( createStampede , destroyStampede ) );
-ArmorCallBacks.addCallBack( spells.CLARITY, new ArmorCallBack( createClarity, destroyClarity ) );
+    if ( spells_.length == 0 )
+    {
+        return null;
+    }
+
+    const outputString = new StringRef();
+
+    const event = new ArmorActivateEvent( defendingEntity, attackingEntity, damage, isCorrupted( attackingEntity ), [], wasProjectile );
+
+    let reflect;
+    let reflectLevel = 0;
+
+    for ( let i = 0; i < spells_.length; ++i )
+    {
+        const { baseSpell, tier } = getBaseSpellAndTier( spells_[ i ].spell );
+
+        if ( baseSpell == spells.REFLECT )
+        {
+            reflect = ArmorSpells.getEffect( spells.REFLECT );
+            reflectLevel = tier;
+            continue;
+        }
+        // if ( baseSpell == spells.EVASION )
+        // {
+        //     evasion = ArmorSpells.getEffect( spells.EVASION );
+        //     evasionLevel = tier;
+        //     continue;
+        // }
+
+        event.equipmentSlot = spells_[ i ].slot;
+
+        ArmorSpells.activateEffect( baseSpell, event, tier, outputString );
+    }
+
+    return new ArmorActivation( outputString, reflect, reflectLevel, event.evaded );
+}

@@ -1,0 +1,16 @@
+{
+	"format_version": "1.17.0",
+    "minecraft:ore_feature": {
+		"description": {
+			"identifier": "tench:dragonscale_ore_feature"
+		},
+		"count": 4,
+		"replace_rules": [
+			{
+				"places_block": "tench:dragonscale_ore",
+				"may_replace": ["minecraft:end_stone"]
+			}
+		],
+        "discard_chance_on_air_exposure": 0.9
+	}
+}

@@ -2,7 +2,7 @@
 	"format_version": "1.18.0",
 	"minecraft:item": {
 		"description": {
-			"identifier": "ench:obsidian_chestplate",
+			"identifier": "tench:obsidian_chestplate",
 			"category": "equipment"
 		},
 		"components": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_obsidian_chestplate"
+				"texture": "tench_obsidian_chestplate"
 			},
 			"minecraft:render_offsets": "chestplates",
 			"minecraft:armor": {
@@ -44,7 +44,7 @@
 					},
 					{
 						"items": [
-							"ench:obsidian_chestplate"
+							"tench:obsidian_chestplate"
 						],
 						"repair_amount": "query.max_durability*0.4"
 					}

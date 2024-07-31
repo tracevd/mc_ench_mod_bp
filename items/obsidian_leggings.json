@@ -2,7 +2,7 @@
 	"format_version": "1.18.0",
 	"minecraft:item": {
 		"description": {
-			"identifier": "ench:obsidian_leggings",
+			"identifier": "tench:obsidian_leggings",
 			"category": "equipment"
 		},
 		"components": {
@@ -22,7 +22,7 @@
 				}
 			},
 			"minecraft:icon": {
-				"texture": "ench_obsidian_leggings"
+				"texture": "tench_obsidian_leggings"
 			},
 			"minecraft:render_offsets": "leggings",
 			"minecraft:armor": {
@@ -44,7 +44,7 @@
 					},
 					{
 						"items": [
-							"ench:obsidian_leggings"
+							"tench:obsidian_leggings"
 						],
 						"repair_amount": "query.max_durability*0.4"
 					}
