@@ -13,5 +13,12 @@ How to use:
   * (windows) "%LOCALAPPDATA%/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang/development_behavior_packs"
   * Other paths can be found [here](https://wiki.bedrock.dev/guide/project-setup.html).
 - Clone the corresponding [Resource Pack](https://github.com/tracevd/mc_ench_mod_rp) into a new folder at the same path except the path would end with "development_resource_packs" rather than "development_behavior_packs"
-- The final structure should have the development_(resource|behavior)_packs/your_new_folder with its contents being the cloned repository.
+- The final structure should be:
+ * com.mojang
+   * development_behavior_packs
+     * your_new_folder
+       * (behavior pack repository contents)
+   * development_resource_packs
+     * your_new_folder2
+       * (resource pack repository contents)
 - Then, when creating a new world you can add both the behavior pack and resource pack to the world.
