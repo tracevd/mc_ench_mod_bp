@@ -8,5 +8,5 @@ execute at @s[scores={enchanting=4}] run structure load respiration10 ~ ~ ~
 execute at @s[scores={enchanting=6}] run structure load unbreaking10 ~ ~ ~
 execute at @s[scores={enchanting=7}] run structure load looting5 ~ ~ ~
 execute at @s[scores={enchanting=8}] run structure load featherfalling10 ~ ~ ~
-execute at @s[scores={enchanting=9}] run structure load thorns10 ~ ~ ~
+execute at @s[scores={enchanting=9}] run structure load thorns8 ~ ~ ~
 scoreboard players reset * enchanting

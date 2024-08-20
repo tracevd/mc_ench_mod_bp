@@ -9,6 +9,6 @@ execute at @s[scores={enchanting=5}] run structure load lure4 ~ ~ ~
 execute at @s[scores={enchanting=6}] run structure load luckofthesea4 ~ ~ ~
 execute at @s[scores={enchanting=7}] run structure load protection5 ~ ~ ~
 execute at @s[scores={enchanting=8}] run structure load respiration4 ~ ~ ~
-execute at @s[scores={enchanting=9}] run structure load thorns5 ~ ~ ~
+execute at @s[scores={enchanting=9}] run structure load thorns4 ~ ~ ~
 execute at @s[scores={enchanting=10}] run structure load unbreaking5 ~ ~ ~
 scoreboard players reset * enchanting

@@ -1,9 +1,12 @@
 {
-	"format_version": "1.18.0",
+	"format_version": "1.20.30",
 	"minecraft:item": {
 		"description": {
 			"identifier": "tench:obsidian_chestplate",
-			"category": "equipment"
+			"menu_category": {
+				"category": "equipment",
+				"group": "itemGroup.name.chestplate"
+			}
 		},
 		"components": {
 			"minecraft:display_name": {
@@ -21,18 +24,11 @@
 					"max": 100
 				}
 			},
-			"minecraft:icon": {
-				"texture": "tench_obsidian_chestplate"
-			},
-			"minecraft:render_offsets": "chestplates",
-			"minecraft:armor": {
-				"protection": 9
-			},
+			"minecraft:icon": "tench_obsidian_chestplate",
 			"minecraft:wearable": {
-				"slot": "slot.armor.chest"
-			},
-			"minecraft:creative_category": {
-				"parent": "itemGroup.name.chestplate"
+				"slot": "slot.armor.chest",
+				"protection": 9,
+				"dispensable": true
 			},
 			"minecraft:repairable": {
 				"repair_items": [

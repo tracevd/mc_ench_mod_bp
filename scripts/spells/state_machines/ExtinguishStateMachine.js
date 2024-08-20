@@ -21,7 +21,7 @@ export class ExtinguishStateMachine
             return;
         }
 
-        if ( player.getComponent("onfire") != null
+        if ( player.getComponent( mc.EntityComponentTypes.OnFire ) != null
           && Math.random() < this.tier / 10 )
         {
             player.extinguishFire();

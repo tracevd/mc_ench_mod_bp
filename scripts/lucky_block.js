@@ -2,60 +2,20 @@ import * as mc from "@minecraft/server"
 import * as sets from './sets/sets.js'
 import { print } from "./print.js";
 
-function loadDragonSlayerBow( player, blockLocation )
-{
-    player.runCommandAsync( `structure load tench:DragonSlayerBow ${blockLocation.x} ${blockLocation.y} ${blockLocation.z}`);
-}
-
-function loadDragonSlayerHelmet( player, blockLocation )
-{
-    player.runCommandAsync( `structure load tench:DragonSlayerHelmet ${blockLocation.x} ${blockLocation.y} ${blockLocation.z}`);
-}
-
-function loadDragonSlayerChestplate( player, blockLocation )
-{
-    player.runCommandAsync( `structure load tench:DragonSlayerChest ${blockLocation.x} ${blockLocation.y} ${blockLocation.z}`);
-}
-
-function loadDragonSlayerLeggings( player, blockLocation )
-{
-    player.runCommandAsync( `structure load tench:DragonSlayerLegs ${blockLocation.x} ${blockLocation.y} ${blockLocation.z}`);
-}
-
-function loadDragonSlayerBoots( player, blockLocation )
-{
-    player.runCommandAsync( `structure load tench:DragonSlayerBoots ${blockLocation.x} ${blockLocation.y} ${blockLocation.z}`);
-}
-
-function loadDragonSlayerSword( player, blockLocation )
-{
-    player.runCommandAsync( `structure load tench:DragonSlayerSword ${blockLocation.x} ${blockLocation.y} ${blockLocation.z}`);
-}
-
 /**
- * @param {mc.Player} player
- * @param {mc.Vector3} blockLocation
+ * @param { mc.Player } player
+ * @param { mc.Vector3 } blockLocation
  */
-function loadRandomArmorFromSets( player, blockLocation )
+function loadRandomItemFromSets( player, blockLocation )
 {
     print("random set piece");
 
-    let rand = Math.round( Math.random() * 100 );
+    sets.SetPieces.getRandom().loadAt( blockLocation, player.dimension );
 
-    const get2RandomPieces = rand > 50;
-
-    const armorSets = sets.ArmorSets.sets;
-
-    for ( let i = 0; i < 1 + get2RandomPieces; ++i )
+    if ( Math.random() > 0.5 )
     {
-        const randomSet = armorSets[ rand % armorSets.length ];
-
-        const randomItem = randomSet.items[ rand % randomSet.items.length ];
-
-        player.dimension.spawnItem( randomItem, blockLocation );
-
-        rand = Math.round( Math.random() * 100 );
-    }    
+        sets.SetPieces.getRandom().loadAt( blockLocation, player.dimension );
+    }
 }
 
 function explode( player, blockLocation )
@@ -105,13 +65,7 @@ class BlockBreakEffect
 }
 
 const breakEffects = [
-    new BlockBreakEffect( loadDragonSlayerBow, 1 ),
-    new BlockBreakEffect( loadDragonSlayerHelmet, 1 ),
-    new BlockBreakEffect( loadDragonSlayerChestplate, 1 ),
-    new BlockBreakEffect( loadDragonSlayerLeggings, 1 ),
-    new BlockBreakEffect( loadDragonSlayerBoots, 1 ),
-    new BlockBreakEffect( loadDragonSlayerSword, 1 ),
-    new BlockBreakEffect( loadRandomArmorFromSets, 55 ),
+    new BlockBreakEffect( loadRandomItemFromSets, 105 ),
     new BlockBreakEffect( explode, 50 ),
     new BlockBreakEffect( deathPit, 58 ),
     new BlockBreakEffect( awkwardSheep, 10 ),
@@ -119,10 +73,14 @@ const breakEffects = [
     new BlockBreakEffect( spawnLoot, 500 ),
 ];
 
-const totalWeight = breakEffects.reduce( (prev, curr) => {
-        prev.weight = prev.weight + curr.weight;
-        return prev;
-    }, new BlockBreakEffect(null, 0) ).weight;
+const totalWeight = ( () => {
+    let weight = 0;
+    for ( let i = 0; i < breakEffects.length; ++i )
+    {
+        weight += breakEffects[ i ].weight;
+    }
+    return weight;
+} )();
 
 /**
  * @param { mc.Player } player 
@@ -130,7 +88,7 @@ const totalWeight = breakEffects.reduce( (prev, curr) => {
  */
 export function breakLuckyBlock( player, position )
 {
-    let random = Math.round( Math.random() * totalWeight - 1 );
+    let random = Math.round( Math.random() * ( totalWeight - 1 ) );
 
     let i = 0;
 

@@ -6,7 +6,7 @@ import { RED } from "./spells/spell_constants";
 
 /**
  * Adds a health counter to the player underneath their nametag
- * @param {mc.Entity} entity
+ * @param { mc.Entity } entity
  */
 export function updateHealthDisplay( entity )
 {
@@ -15,7 +15,7 @@ export function updateHealthDisplay( entity )
         return;
     }
     
-    const health = entity.getComponent("health");
+    const health = entity.getComponent( mc.EntityComponentTypes.Health );
 
     if ( health == null )
     {

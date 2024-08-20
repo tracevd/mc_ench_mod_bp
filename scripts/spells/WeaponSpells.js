@@ -32,10 +32,10 @@ export class WeaponEffects
     }
 
     /**
-     * @param {string} name 
-     * @param {WeaponEvent} event 
-     * @param {number} spelltier 
-     * @param {StringRef} outputString 
+     * @param { string } name
+     * @param { WeaponEvent } event
+     * @param { number } spelltier
+     * @param { StringRef } outputString
      */
     static activateEffect( name, event, spelltier, outputString )
     {
@@ -49,9 +49,9 @@ export class WeaponEffects
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function criticalStrike( event, spelltier, outputString )
 {
@@ -73,9 +73,9 @@ function criticalStrike( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function poison( event, spelltier, outputString )
 {
@@ -99,9 +99,9 @@ function poison( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function wither( event, spelltier, outputString )
 {
@@ -124,9 +124,9 @@ function wither( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function groundPound( event, spelltier, outputString )
 {
@@ -158,9 +158,9 @@ function groundPound( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function exploding( event, spelltier, outputString )
 {
@@ -183,9 +183,9 @@ function exploding( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function absorbing( event, spelltier, outputString )
 {
@@ -208,9 +208,9 @@ function absorbing( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function lifesteal( event, spelltier, outputString )
 {
@@ -226,7 +226,7 @@ function lifesteal( event, spelltier, outputString )
 
     outputString.addWithNewLine( spells.LIFESTEAL );
 
-    const health = event.source.getComponent("health");
+    const health = event.source.getComponent( mc.EntityComponentTypes.Health );
     const multiplier = (spelltier / 16) + 0.2;
 
     let health_stolen = event.damage * multiplier;
@@ -244,9 +244,9 @@ function lifesteal( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function slowing( event, spelltier, outputString )
 {
@@ -272,9 +272,9 @@ function slowing( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 export function lightning( event, spelltier, outputString )
 {
@@ -291,7 +291,7 @@ export function lightning( event, spelltier, outputString )
 
     event.target.runCommandAsync("summon lightning_bolt");
     util.applyDamage( event.target, damage, event.source );
-    const onFire = event.source.getComponent("onfire");
+    const onFire = event.source.getComponent( mc.EntityComponentTypes.OnFire );
     mc.system.runTimeout( () =>
     {
         event.source.runCommandAsync("fill ~-3 ~-3 ~-3 ~3 ~3 ~3 air replace fire");
@@ -310,9 +310,9 @@ export function lightning( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 export function levitating( event, spelltier, outputString )
 {
@@ -335,13 +335,13 @@ export function levitating( event, spelltier, outputString )
 
 function isCorruptable( entity )
 {
-    return entity.getComponent("equippable") != null;
+    return entity.getComponent( mc.EntityComponentTypes.Equippable ) != null;
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function corruption( event, spelltier, outputString )
 {
@@ -370,9 +370,9 @@ function corruption( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function lacerate( event, spellTier, outputString )
 {
@@ -394,7 +394,7 @@ function lacerate( event, spellTier, outputString )
             return;
         }
 
-        const health = event.target.getComponent("health");
+        const health = event.target.getComponent( mc.EntityComponentTypes.Health );
 
         if ( health.currentValue < 2 )
         {
@@ -428,13 +428,13 @@ function lacerate( event, spellTier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 export function unbreakable( event, spelltier, outputString )
 {
-    const equip = event.source.getComponent("equippable");
+    const equip = event.source.getComponent( mc.EntityComponentTypes.Equippable );
 
     if ( equip == null )
     {
@@ -449,12 +449,10 @@ export function unbreakable( event, spelltier, outputString )
         return;
     }
 
-    const durability = item.getComponent("durability");
+    const durability = item.getComponent( mc.ItemComponentTypes.Durability );
 
     if ( durability == null )
-    {
         return;
-    }
 
     if ( durability.damage > 0 )
     {
@@ -469,9 +467,9 @@ export function unbreakable( event, spelltier, outputString )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function disorient( event, spelltier, outputString )
 {
@@ -486,7 +484,7 @@ function disorient( event, spelltier, outputString )
     if ( !event.reflected )
         makeReflectable( event, spells.DISORIENT, spelltier );
 
-    const inventory = event.target.getComponent("inventory");
+    const inventory = event.target.getComponent( mc.EntityComponentTypes.Inventory );
 
     const shuffled = [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]
     .map( e => ({ slot: e, num: Math.random() }) )
@@ -520,6 +518,8 @@ WeaponEffects.addEffect( spells.UNBREAKABLE,     unbreakable );
 WeaponEffects.addEffect( spells.DISORIENT,       disorient );
 
 
+import { isBow } from '../util.js';
+
 /**
  * Activates spells on the item in the player's main hand.
  * Effects do not activate if the player is corrupted.
@@ -545,7 +545,7 @@ export function activateWeaponSpells( player, hitEntity, damage )
         return [];
     }
 
-    const equip = player.getComponent("equippable");
+    const equip = player.getComponent( mc.EntityComponentTypes.Equippable );
 
     if ( equip == null )
     {
@@ -557,10 +557,9 @@ export function activateWeaponSpells( player, hitEntity, damage )
     if ( item == undefined )
         return [];
 
-    if ( item.typeId.endsWith("bow") )
+    if ( isBow( item ) )
         return [];
     
-    /** @type {string[]} */
     const lore = item.getLore();
 
     if ( lore.length == 0 || lore[ 0 ] == undefined )

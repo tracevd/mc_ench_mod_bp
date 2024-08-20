@@ -11,7 +11,7 @@ import { getBaseSpellAndTier } from './util.js';
 
 export class PickaxeSpells
 {
-    /** @type { Map<string, (e:BreakBlockEvent, spellLevel: string, outputString:string[]) => void> } */
+    /** @type { Map< string, (e:BreakBlockEvent, spellLevel: string, outputString:string[]) => void > } */
     static #spells = new Map();
 
     static addSpell( name, func )
@@ -30,30 +30,6 @@ export class PickaxeSpells
     }
 }
 
-/**
- * @param {string} itemType 
- */
-function getItemDroppedFromOre( itemType )
-{
-    if ( !itemType.endsWith("_ore") )
-        throw new Error("Invalid item type");
-
-    if ( itemType.includes("iron") )
-    {
-        return "minecraft:raw_iron";
-    }
-    if ( itemType.includes("copper") )
-    {
-        return "minecraft:raw_copper";
-    }
-    if ( itemType.includes("gold") )
-    {
-        return "minecraft:raw_gold";
-    }
-
-    return itemType.replace( "_ore", "" ).replace("deepslate_", "").replace("nether_", "");
-}
-
 const avgOreDropCount = new Map([
     [ "minecraft:redstone_ore", 4.5 ],
     [ "minecraft:lapiz_lazuli_ore", 6.5 ],
@@ -62,7 +38,7 @@ const avgOreDropCount = new Map([
 ]);
 
 /**
- * @param {string} oreType 
+ * @param { string } oreType 
  * @returns 
  */
 function getAvgOreDropCount( oreType )
@@ -71,7 +47,7 @@ function getAvgOreDropCount( oreType )
 }
 
 /**
- * @param {number} level 
+ * @param { number } level 
  */
 function fortuneDropMultiplier( level )
 {
@@ -84,42 +60,63 @@ function fortuneDropMultiplier( level )
     return 1 + Math.ceil( level * Math.random() );
 }
 
-/**
- * @param { string } block
- * @param { boolean } itemHasSilkTouch
- * @param { number } itemFortuneLevel
- * @returns { [ string, number ] }
- */
-function destroyOre( blockType, itemHasSilkTouch, itemFortuneLevel )
+function getItemDroppedFromOre( blockType, itemHasSilkTouch )
 {
-    const avgDrops = getAvgOreDropCount( blockType );
-    const itemDropped = getItemDroppedFromOre( blockType );
-
     if ( itemHasSilkTouch )
     {
-        return [ blockType, 1 ];
+        return blockType;
+    }
+
+    if ( blockType.includes("iron") )
+    {
+        return "minecraft:raw_iron";
+    }
+    if ( blockType.includes("copper") )
+    {
+        return "minecraft:raw_copper";
+    }
+    if ( blockType.includes("gold") )
+    {
+        return "minecraft:raw_gold";
+    }
+
+    return blockType.replace( "_ore", "" ).replace("deepslate_", "").replace("nether_", "");
+}
+
+/**
+ * @param { string } blockType The type of block being mined
+ * @param { string } itemDropped The type of item dropped from the block (see getItemDroppedFromOre)
+ * @param { number } itemFortuneLevel The fortune level of the pickaxe
+ */
+function getNumberOfDropsFromOre( blockType, itemDropped, itemFortuneLevel )
+{
+    const avgDrops = getAvgOreDropCount( blockType );
+
+    if ( itemDropped == blockType )
+    {
+        return 1;
     }
 
     if ( itemFortuneLevel > 0 && itemDropped != "tench:dragonscale" )
     {
-        return [
-            itemDropped,
-            Math.round( avgDrops * fortuneDropMultiplier( itemFortuneLevel ) )
-        ];
+        return Math.round( avgDrops * fortuneDropMultiplier( itemFortuneLevel ) );
     }
 
-    return [ itemDropped, avgDrops ];
+    return avgDrops;
 }
 
+/**
+ * @param { mc.Vector3 } location
+ */
 function locationToString( location )
 {
     return `${location.x} ${location.y} ${location.z}`;
 }
 
 /**
- * @param {BreakBlockEvent} event 
- * @param {number} spellLevel
- * @param {StringRef} outputString 
+ * @param { BreakBlockEvent } event 
+ * @param { number } spellLevel
+ * @param { StringRef } outputString 
  */
 function veinMiner( event, spellLevel, outputString )
 {    
@@ -136,8 +133,8 @@ function veinMiner( event, spellLevel, outputString )
 
     const locationsAlreadySearched = new Set([locationToString( event.block.location )]);
     const blocksToSearchAround = [event.block];
-    /** @type {mc.Block[]} */
-    const blocksFound = [];
+    /** @type { mc.Block[] } */
+    const matchingBlocks = [];
 
     const spacesAround = ["above", "below", "east", "west", "north", "south"];
 
@@ -145,11 +142,11 @@ function veinMiner( event, spellLevel, outputString )
     {
         const block = blocksToSearchAround.pop();
 
-        blocksFound.push( block );
+        matchingBlocks.push( block );
 
         for ( let i = 0; i < spacesAround.length; ++i )
         {
-            /** @type {mc.Block | undefined} */
+            /** @type { mc.Block | undefined } */
             const touchingBlock = block[ spacesAround[ i ] ]();
 
             if ( touchingBlock == null )
@@ -179,20 +176,17 @@ function veinMiner( event, spellLevel, outputString )
         }
     }
 
-    /** @type {mc.ItemStack[]} */
+    /** @type { mc.ItemStack[] } */
     let finalItems = [];
 
-    let numBlocks = blocksFound.length;
+    let numBlocks = matchingBlocks.length;
 
     let numItems = 0;
-    let itemType = "";
+    let itemType = getItemDroppedFromOre( blockType, event.itemHasSilkTouch );
 
     while ( numBlocks > 0 )
     {
-        const [ type, amount ] = destroyOre( blockType, event.itemHasSilkTouch, event.itemFortuneLevel );
-
-        numItems += amount;
-        itemType = type;
+        numItems += getNumberOfDropsFromOre( blockType, itemType, event.itemFortuneLevel );
         --numBlocks;
     }
     
@@ -208,9 +202,9 @@ function veinMiner( event, spellLevel, outputString )
 
     mc.system.run( () =>
     {
-        for ( const block of blocksFound )
+        for ( let i = 0; i < matchingBlocks.length; ++i )
         {
-            block.setType("air");
+            matchingBlocks[ i ].setType("air");
         }
     });
 
@@ -232,9 +226,9 @@ const excavateBlocks = new Map([
 ]);
 
 /**
- * @param {BreakBlockEvent} event 
- * @param {number} spellLevel
- * @param {StringRef} outputString 
+ * @param { BreakBlockEvent } event 
+ * @param { number } spellLevel
+ * @param { StringRef } outputString 
  */
 function excavate( event, spellLevel, outputString )
 {
@@ -347,10 +341,10 @@ PickaxeSpells.addSpell( spells.VEIN_MINER, veinMiner );
 PickaxeSpells.addSpell( spells.EXCAVATE,   excavate );
 
 /**
- * @param {mc.Player} player 
- * @param {mc.ItemStack} pickaxe 
- * @param {mc.Block} block 
- * @returns 
+ * @param { mc.Player } player 
+ * @param { mc.ItemStack } pickaxe 
+ * @param { mc.Block } block 
+ * @returns Whether the event should be cancelled
  */
 export function parsePickaxeSpells( player, pickaxe, block )
 {

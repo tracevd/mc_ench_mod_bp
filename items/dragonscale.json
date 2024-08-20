@@ -1,21 +1,18 @@
 {
-    "format_version": "1.18.0",
+    "format_version": "1.20.30",
 	"minecraft:item": {
 		"description": {
 			"identifier": "tench:dragonscale",
-			"category": "Items"
+			"menu_category": {
+				"category": "items"
+			}
 		},
 		"components": {
 			"minecraft:display_name": {
 				"value": "Dragon Scale"
 			},
 			"minecraft:max_stack_size": 64,
-			"minecraft:icon": {
-				"texture": "tench_dragonscale"
-			},
-			"minecraft:creative_category": {
-				"parent": "itemGroup.name.ingot"
-			}
+			"minecraft:icon": "tench_dragonscale"
 		}
 	}
 }

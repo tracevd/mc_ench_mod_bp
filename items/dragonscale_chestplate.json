@@ -1,9 +1,12 @@
 {
-	"format_version": "1.18.0",
+	"format_version": "1.20.30",
 	"minecraft:item": {
 		"description": {
 			"identifier": "tench:dragonscale_chestplate",
-			"category": "equipment"
+			"menu_category": {
+				"category": "equipment",
+				"group": "itemGroup.name.chestplate"
+			}
 		},
 		"components": {
 			"minecraft:display_name": {
@@ -21,23 +24,11 @@
 					"max": 100
 				}
 			},
-			"minecraft:icon": {
-				"texture": "tench_dragonscale_chestplate"
-			},
-			"minecraft:render_offsets": "chestplates",
-			"minecraft:armor": {
-				"protection": 20,
-				"texture_type": "netherite"
-			},
+			"minecraft:icon": "tench_dragonscale_chestplate",
 			"minecraft:wearable": {
 				"slot": "slot.armor.chest",
+				"protection": 20,
 				"dispensable": true
-			},
-			"minecraft:creative_category": {
-				"parent": "itemGroup.name.chestplate"
-			},
-			"minecraft:knockback_resistance": {
-				"protection": 1
 			}
 		}
 	}

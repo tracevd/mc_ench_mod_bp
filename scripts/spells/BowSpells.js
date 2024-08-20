@@ -8,7 +8,6 @@ import { print } from '../print.js';
 
 import { Vector } from '../Vector.js'
 import { StringRef } from '../StringRef.js';
-import { isCorrupted, getBaseSpellAndTier } from './util.js';
 
 export class BowEffects
 {
@@ -40,9 +39,9 @@ export class BowEffects
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function sharpenedArrows( event, spellTier, outputString )
 {
@@ -58,13 +57,13 @@ function sharpenedArrows( event, spellTier, outputString )
 
     const damageAdded = spellTier / 10 * event.damage;
 
-    util.applyDamage( event.target, damageAdded, event.source, true );
+    util.applyDamage( event.target, damageAdded, event.source );
 
     return damageAdded;
 }
 
 /**
- * @param {mc.Block} blockToFreeze 
+ * @param { mc.Block } blockToFreeze 
  */
 function freezeBlock( blockToFreeze )
 {
@@ -90,13 +89,16 @@ function freezeBlock( blockToFreeze )
 }
 
 /**
- * @param {WeaponEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { WeaponEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function freezingEntity( event, spelltier, outputString )
 {
     if ( !event.reflected && event.sourceIsCorrupted )
+        return 0;
+
+    if ( !util.coolDownHasFinished(event.source, spells.FREEZING ) )
         return 0;
 
     let blockAtHead = null;
@@ -114,10 +116,12 @@ function freezingEntity( event, spelltier, outputString )
     {
         if ( !event.reflected )
             outputString.addWithNewLine( spells.FREEZING );
-    }
 
-    if ( !event.reflected )
-        makeReflectable( event, spells.FREEZING, spelltier );
+        if ( !event.reflected )
+            makeReflectable( event, spells.FREEZING, spelltier );
+
+        util.startCoolDown( event.source, spells.FREEZING, 12 );
+    }
 
     return 0;
 }
@@ -145,7 +149,7 @@ export class BowReleaseEffects
     }
 
     /**
-     * @param {string} name 
+     * @param { string } name 
      */
     static getEffect( name )
     {
@@ -154,9 +158,9 @@ export class BowReleaseEffects
 }
 
 /**
- * @param {BowReleaseEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { BowReleaseEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function velocity( event, spellTier, outputString )
 {
@@ -181,9 +185,9 @@ function velocity( event, spellTier, outputString )
 }
 
 /**
- * @param {BowReleaseEvent} event 
- * @param {number} spelltier 
- * @param {StringRef} outputString 
+ * @param { BowReleaseEvent } event 
+ * @param { number } spelltier 
+ * @param { StringRef } outputString 
  */
 function aimbot( event, spellTier, outputString )
 {
@@ -276,17 +280,19 @@ BowReleaseEffects.addEffect( spells.VELOCITY,    velocity );
 BowReleaseEffects.addEffect( spells.AIMBOT,      aimbot );
 BowReleaseEffects.addEffect( spells.UNBREAKABLE, unbreakable );
 
+import { isBow } from '../util.js';
+
 /**
  * Parses the bow spells on the bow currently in the player's main hand.
  * Only parses effects that activate on entity hit.
- * @param {mc.Player} player 
- * @param {mc.Entity} hitEntity 
- * @param {number} damage The amount of damage done to the hitEntity
+ * @param { mc.Player } player 
+ * @param { mc.Entity } hitEntity 
+ * @param { number } damage The amount of damage done to the hitEntity
  * @returns { string[] } spells activated that are reflectable
  */
 export function activateBowHitEntitySpells( player, hitEntity, damage )
 {
-    if ( isCorrupted( player ) )
+    if ( util.isCorrupted( player ) )
     {
         return [];
     }
@@ -297,7 +303,7 @@ export function activateBowHitEntitySpells( player, hitEntity, damage )
         return [];
     }
 
-    const equip = player.getComponent("equippable");
+    const equip = player.getComponent( mc.EntityComponentTypes.Equippable );
 
     if ( equip == null )
     {
@@ -309,10 +315,10 @@ export function activateBowHitEntitySpells( player, hitEntity, damage )
     if ( item == undefined )
         return [];
 
-    if ( !item.typeId.endsWith("bow") )
+    if ( !isBow( item ) )
         return [];
     
-    /** @type {string[]} */
+    /** @type { string[] } */
     const lore = item.getLore();
 
     if ( lore.length == 0 || lore[ 0 ] == undefined )
@@ -324,11 +330,11 @@ export function activateBowHitEntitySpells( player, hitEntity, damage )
 
     let extraDamage = 0;
 
-    const event = new WeaponEvent( hitEntity, player, damage, isCorrupted( player ) );
+    const event = new WeaponEvent( hitEntity, player, damage, util.isCorrupted( player ) );
 
     for ( let i = 0; i < lore.length; ++i )
     {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
+        const { baseSpell, tier } = util.getBaseSpellAndTier( lore[ i ] );
 
         const effect = BowEffects.getEffect( baseSpell );
 
@@ -364,7 +370,7 @@ export function activateBowReleaseSpells( source, item, projectile )
     if ( !item.typeId.includes("bow") )
         return;
 
-    if ( isCorrupted( source ) )
+    if ( util.isCorrupted( source ) )
     {
         return;
     }
@@ -377,7 +383,7 @@ export function activateBowReleaseSpells( source, item, projectile )
 
     for ( let i = 0; i < lore.length; ++i )
     {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
+        const { baseSpell, tier } = util.getBaseSpellAndTier( lore[ i ] );
 
         const effect = BowReleaseEffects.getEffect( baseSpell );
 
@@ -407,7 +413,7 @@ export class ArrowHitBlockEffects
     }
 
     /**
-     * @param {string} name 
+     * @param { string } name 
      */
     static getEffect( name )
     {
@@ -416,14 +422,14 @@ export class ArrowHitBlockEffects
 }
 
 /**
- * @param {ProjectileHitBlockEvent} event
- * @param {number} spellTier
- * @param {StringRef} outputString
+ * @param { ProjectileHitBlockEvent } event
+ * @param { number } spellTier
+ * @param { StringRef } outputString
  */
 function magneticArrows( event, spellTier, outputString )
 {
-    const item = event.player.getComponent("equippable").getEquipment( mc.EquipmentSlot.Mainhand );
-    const enchantments = item.getComponent("enchantable");
+    const item = event.player.getComponent( mc.EntityComponentTypes.Equippable ).getEquipment( mc.EquipmentSlot.Mainhand );
+    const enchantments = item.getComponent( mc.ItemComponentTypes.Enchantable );
 
     if ( enchantments != null && enchantments.hasEnchantment('infinity') )
     {
@@ -432,7 +438,7 @@ function magneticArrows( event, spellTier, outputString )
 
     event.projectile.remove();
 
-    const inv = event.player.getComponent("minecraft:inventory");
+    const inv = event.player.getComponent( mc.EntityComponentTypes.Inventory );
 
     if ( inv.container )
     {
@@ -441,12 +447,17 @@ function magneticArrows( event, spellTier, outputString )
 }
 
 /**
- * @param {ProjectileHitBlockEvent} event
- * @param {number} spellTier
- * @param {StringRef} outputString
+ * @param { ProjectileHitBlockEvent } event
+ * @param { number } spellTier
+ * @param { StringRef } outputString
  */
 function freezingBlock( event, spellTier, outputString )
 {
+    if ( util.isCorrupted( event.player ) )
+        return;
+    if ( !util.coolDownHasFinished( event.player, spells.FREEZING ) )
+        return;
+
     let direction = "";
 
     switch ( event.blockHit.face )
@@ -477,6 +488,7 @@ function freezingBlock( event, spellTier, outputString )
     if ( blockToFreeze != null && freezeBlock( blockToFreeze ) )
     {
         outputString.addWithNewLine( spells.FREEZING );
+        util.startCoolDown( event.player, spells.FREEZING, 5 );
     }
 }
 
@@ -486,17 +498,17 @@ ArrowHitBlockEffects.addEffect( spells.FREEZING,        freezingBlock );
 /**
  * Parses the bow spells on the bow currently in the player's main hand.
  * Only parses effects that activate on block hit.
- * @param {mc.Player} player 
- * @param {mc.BlockHitInformation} hitBlock
+ * @param { mc.Player } player
+ * @param { mc.BlockHitInformation } hitBlock
  */
 export function activateBowHitBlockSpells( player, projectile, hitBlock )
 {
-    if ( isCorrupted( player ) )
+    if ( util.isCorrupted( player ) )
     {
         return;
     }
 
-    const equip = player.getComponent("equippable");
+    const equip = player.getComponent( mc.EntityComponentTypes.Equippable );
 
     if ( equip == null )
     {
@@ -511,7 +523,6 @@ export function activateBowHitBlockSpells( player, projectile, hitBlock )
     if ( !item.typeId.endsWith("bow") )
         return;
     
-    /** @type {string[]} */
     const lore = item.getLore();
 
     if ( lore.length == 0 || lore[ 0 ] == undefined )
@@ -525,7 +536,7 @@ export function activateBowHitBlockSpells( player, projectile, hitBlock )
 
     for ( let i = 0; i < lore.length; ++i )
     {
-        const { baseSpell, tier } = getBaseSpellAndTier( lore[ i ] );
+        const { baseSpell, tier } = util.getBaseSpellAndTier( lore[ i ] );
 
         const effect = ArrowHitBlockEffects.getEffect( baseSpell );
 

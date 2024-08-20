@@ -7,90 +7,27 @@ import * as spells from './spells/spells.js';
 import { print } from "./print.js";
 import { RESET } from "./spells/spell_constants.js";
 
-function addSpellToWeapon( player, weapon, spell_tier )
+import { getItemType, ItemType } from "./util.js";
+
+/**
+ * @param { mc.Player } player 
+ * @param { mc.ItemStack } item 
+ * @param { string[] } lore 
+ */
+function refreshHeldItemWithLore( player, item, lore )
 {
-    /** @type {string[]} */
-    let lore_ = weapon.getLore();
+    item.setLore( lore )
 
-    if ( lore_.length >= 3 )
-    {
-        return false;
-    }
-
-    const lore_to_add = spells.getRandomWeaponSpell( lore_, spell_tier );
-
-    lore_.push( lore_to_add );
-
-    weapon.setLore( lore_ );
-
-    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, weapon );
-
-    return true;
-}
-
-function addSpellToArmor( player, armor, spell_tier )
-{
-    /** @type {string[]} */
-    const lore_ = armor.getLore();
-
-    if ( lore_.length >= 1 )
-        return false;
-
-    const lore_to_add = spells.getRandomArmorSpell( spell_tier );
-
-    lore_.push( lore_to_add );
-
-    armor.setLore( lore_ );
-
-    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, armor );
-
-    return true;
-}
-
-function addSpellToBow( player, bow, spell_tier )
-{
-    /** @type {string[]} */
-    let lore_ = bow.getLore();
-
-    if ( lore_.length > 2 )
-        return false;
-
-    const lore_to_add = spells.getRandomBowSpell( lore_, spell_tier );
-
-    lore_.push( lore_to_add );
-
-    bow.setLore( lore_ );
-
-    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, bow );
-
-    return true;
-}
-
-function addSpellToPickaxe( player, pick, spell_tier )
-{
-    /** @type {string[]} */
-    let lore_ = pick.getLore();
-
-    if ( lore_.length >= 1 )
-        return false;
-
-    const lore_to_add = spells.getRandomPickaxeSpell( lore_, spell_tier );
-
-    lore_.push( lore_to_add );
-
-    pick.setLore( lore_ );
-
-    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, pick );
-
-    return true;
+    player.getComponent( mc.EntityComponentTypes.Inventory ).container.setItem( player.selectedSlotIndex, item );
 }
 
 function clearLore( player, item )
 {
-    if ( item.getLore() == undefined || item.getLore().length == 0 )
+    if ( item.getLore().length == 0 )
         return false;
-    item.setLore([]);
-    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, item );
+
+    refreshHeldItemWithLore( player, item, [] );
+
     return true;
 }
 
@@ -99,56 +36,19 @@ function clearLastLore( player, item )
     /** @type string[] */
     const lore = item.getLore();
 
-    if ( lore == undefined || lore.length == 0 )
+    if ( lore.length == 0 )
         return false;
 
     lore.pop();
-    item.setLore( lore );
 
-    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, item );
+    refreshHeldItemWithLore( player, item, lore );
+
     return true;
 }
 
-class ItemType
+function getMaxSpellCountForItemType( itemType )
 {
-    static get VOID()    { return 0; }
-    static get WEAPON()  { return 1; }
-    static get ARMOR()   { return 2; }
-    static get BOW()     { return 3; }
-    static get PICKAXE() { return 4; }
-    static get BOOK()    { return 5; }
-}
-
-/**
- * @param { mc.ItemStack } item 
- */
-function getItemType( item )
-{
-    if ( item.typeId.includes("sword")
-      || item.typeId.includes("_axe") )
-        return ItemType.WEAPON;
-
-    if ( item.typeId.includes("helmet")
-      || item.typeId.includes("chestplate")
-      || item.typeId.includes("leggings")
-      || item.typeId.includes("boots") )
-        return ItemType.ARMOR;
-
-    if ( item.typeId.endsWith('bow') )
-        return ItemType.BOW;
-
-    if ( item.typeId.includes('ickaxe') )
-        return ItemType.PICKAXE;
-
-    if ( item.typeId.includes("book") )
-        return ItemType.BOOK;
-
-    return ItemType.VOID;
-}
-
-function getMaxSpellCountForItemType( type )
-{
-    switch ( type )
+    switch ( itemType )
     {
     case ItemType.WEAPON:  return 3;
     case ItemType.ARMOR:   return 1;
@@ -160,9 +60,9 @@ function getMaxSpellCountForItemType( type )
     return 0;
 }
 
-function getItemTypeName( type )
+function getItemTypeName( itemType )
 {
-    switch ( type )
+    switch ( itemType )
     {
     case ItemType.WEAPON:  return "weapon";
     case ItemType.ARMOR:   return "armor";
@@ -174,9 +74,9 @@ function getItemTypeName( type )
     return "unknown";
 }
 
-function getAllSpellsForType( type )
+function getAllSpellsForType( itemType )
 {
-    switch ( type )
+    switch ( itemType )
     {
     case ItemType.WEAPON:  return spells.getAllWeaponSpells();
     case ItemType.ARMOR:   return spells.getAllArmorSpells();
@@ -187,62 +87,308 @@ function getAllSpellsForType( type )
     throw new Error("Unknown item type");
 }
 
+function getRandomSpellForType( itemType, spellTier, alreadyHas = null )
+{
+    switch ( itemType )
+    {
+    case ItemType.ARMOR:
+        return spells.getRandomArmorSpell( spellTier );
+    case ItemType.WEAPON:
+        return spells.getRandomWeaponSpell( alreadyHas, spellTier );
+    case ItemType.BOW:
+        return spells.getRandomBowSpell( alreadyHas, spellTier );
+    case ItemType.PICKAXE:
+        return spells.getRandomPickaxeSpell( spellTier );
+    }
+
+    throw new Error("Unsupported ItemType");
+}
+
+/**
+ * @param { mc.Player } player
+ * @param { mc.ItemStack } item
+ * @param { number } itemType
+ * @param { number } spellTier
+ */
+function addSpellToItem( player, item, itemType, spellTier )
+{
+    const lore = item.getLore();
+
+    if ( lore.length >= getMaxSpellCountForItemType( itemType ) )
+        return false;
+
+    lore.push( getRandomSpellForType( itemType, spellTier, lore ) );
+
+    refreshHeldItemWithLore( player, item, lore );
+
+    return true;
+}
+
 function removeLevels( player, levels )
 {
     player.runCommandAsync("xp -" + levels.toString() + "L @s");
 }
 
+const WEAK_SPELL   = 1;
+const MINOR_SPELL  = 2;
+const NORMAL_SPELL = 3;
+const MAJOR_SPELL  = 4;
+const MAX_SPELL    = 5;
+
+const defaultRequiredLevels = [
+    5,  // weak spellcast
+    10, // minor spellcast
+    15, // normal spellcast
+    20, // major spellcast
+    25, // max spellcast
+    5,  // clear last spell
+    0,  // clear spells
+    0   // cast specific spell
+];
+
+
+/**
+ * @param { mc.Player } player
+ * @param { mc.ItemStack } item
+ * @param { number } itemType
+ */
+function castSpecificSpell( player, item, itemType )
+{
+    if ( itemType == ItemType.BOOK )
+    {
+        print("Cannot select specific spell for a book", player);
+        return;
+    }
+
+    const infos = getAllSpellsForType( itemType );
+
+    const chooseSpell = new mcui.ModalFormData()
+        .title("Cast Specific Spell")
+        .dropdown("Choose a Spell", infos.map( info => info.name ) );
+
+    chooseSpell.show( player ).then( res =>
+    {
+        if ( res.canceled || res.formValues == undefined )
+            return;
+
+        /** @type spells.SpellInfo */
+        const selectedInfo = infos[ res.formValues[ 0 ] ];
+
+        const lore = item.getLore();
+
+        for ( let i = 0; i < lore.length; ++i )
+        {
+            if ( lore[ i ].startsWith( selectedInfo.name ) )
+            {
+                print("This item already has the spell" + selectedInfo + spells.RESET + " on it!", player);
+                return;
+            }
+        }
+
+        /** @type number[] */
+        const specificSpellRequiredLevels = [];
+        /** @type string[] */
+        const levelDisplayStrings = [];
+
+        const spellTiers = selectedInfo.getSpellTiers();
+
+        for ( let i = 0; i < spellTiers.length; ++i )
+        {
+            let specificSpellRequiredLevel = 0;
+
+            if ( selectedInfo.hasTiers() )
+            {
+                specificSpellRequiredLevel = defaultRequiredLevels[ selectedInfo.getCastTierOfSpellTier( i + 1 ) - 1 ];
+            }
+            else
+            {
+                specificSpellRequiredLevel = defaultRequiredLevels[ selectedInfo.minimumCastTier - 1 ];
+            }
+
+            specificSpellRequiredLevel = Math.ceil( Math.round( specificSpellRequiredLevel * 1.5 ) / 5 ) * 5;
+
+            specificSpellRequiredLevels.push( specificSpellRequiredLevel );
+            levelDisplayStrings.push( "Spell Tier " + numberToRomanNumeral( spellTiers[ i ] ) + " (§2§l" + specificSpellRequiredLevel.toString() + " levels" + RESET + ")" );
+        }
+
+        const levelSelection = new mcui.ModalFormData()
+            .title("Select Spell Cast Tier")
+            .dropdown("Spell Tier", levelDisplayStrings );
+
+        levelSelection.show( player ).then( resp =>
+        {
+            if ( resp.canceled || resp.formValues == null )
+                return;
+
+            /** @type number */
+            const spellLevel = resp.formValues[ 0 ] + 1;
+
+            const specificSpellRequiredLevel = specificSpellRequiredLevels[ spellLevel - 1 ];
+
+            if ( player.level < specificSpellRequiredLevel )
+            {
+                print("You do not have enough levels! (need " + specificSpellRequiredLevel.toString() + ")", player);
+                return;
+            }
+
+            lore.push( selectedInfo.hasTiers() ? selectedInfo.name + numberToRomanNumeral( spellLevel ) : selectedInfo.name );
+            refreshHeldItemWithLore( player, item, lore );
+            removeLevels( player, specificSpellRequiredLevel );
+        });
+    });
+}
+
+/**
+ * @param { mc.Player } player
+ * @param { mc.Block } block
+ */
+function getBookshelfCount( player, block )
+{
+    const directions = [
+        "east",
+        "west",
+        "north",
+        "south"
+    ];
+
+    const perpendicularDirections = [
+        "south",
+        "south",
+        "east",
+        "east"
+    ];
+
+    let bookshelfCount = 0;
+
+    for ( let i = 0; i < directions.length; ++i )
+    {
+        /** @type mc.Block */
+        const blockInDirection = block[ directions[ i ] ]( 2 );
+
+        /** @type mc.Block */
+        const blockStart = blockInDirection[ perpendicularDirections[ i ] ]( -1 );
+        /** @type mc.Block */
+        const blockEnd   = blockInDirection[ perpendicularDirections[ i ] ]( 1 ).above();
+
+        let it = blockStart;
+
+        while ( it.x <= blockEnd.x && it.z <= blockEnd.z )
+        {
+            if ( it.typeId == "minecraft:bookshelf" )
+                ++bookshelfCount;
+
+            if ( it.x == blockEnd.x && it.z == blockEnd.z && it.y < blockEnd.y )
+            {
+                it = blockStart.above();
+            }
+            else
+            {
+                it = it[ perpendicularDirections[ i ] ]( 1 );
+            }
+        }
+    }
+
+    return bookshelfCount;
+}
+
+function bookshelfCountToSpellTier( bookshelfCount )
+{
+    if ( bookshelfCount < 4 )
+    {
+        return WEAK_SPELL;
+    }
+    if ( bookshelfCount < 8 )
+    {
+        return MINOR_SPELL;
+    }
+    if ( bookshelfCount < 12 )
+    {
+        return NORMAL_SPELL;
+    }
+    if ( bookshelfCount < 18 )
+    {
+        return MAJOR_SPELL;
+    }
+    return MAX_SPELL;
+}
+
+function spellTierString( spellTier )
+{
+    switch ( spellTier )
+    {
+    case WEAK_SPELL:
+        return "Weak";
+    case MINOR_SPELL:
+        return "Minor";
+    case NORMAL_SPELL:
+        return "Normal";
+    case MAJOR_SPELL:
+        return "Major";
+    case MAX_SPELL:
+        return "Max";
+    }
+
+    return "Uh Oh";
+}
+
 /**
  * @param { mc.Player } player 
  * @param { mc.ItemStack } item
+ * @param { mc.Block } block
  */
-export function showNecromancyTable( player, item )
+export function showNecromancyTable( player, item, block )
 {
-    if ( player.hasTag("in_nec_menu") )
+    if ( player.hasTag("tench:in_nec_menu") )
         return;
 
-    player.addTag("in_nec_menu");
+    const bookSpellTier = bookshelfCountToSpellTier( getBookshelfCount( player, block ) );
+
+    print("Spell Tier: " + bookSpellTier );
+
+    player.addTag("tench:in_nec_menu");
 
     const form = new mcui.ActionFormData()
         .title("Necromancy Table")
-        .body("Choose an spell level to apply.\nYou can apply 3 spells on a weapon and 1 spell per piece of armor")
-        .button("Weak Spellcast:\n§2§l5 Levels")
-        .button("Minor Spellcast:\n§2§l10 Levels")
-        .button("Normal Spellcast:\n§2§l15 Levels")
-        .button("Major Spellcast:\n§2§l20 Levels")
-        .button("Max Spellcast:\n§2§l25 Levels")
-        .button("Clear Last Spell:\n§2§l5 Levels")
-        .button("Clear Spell(s)")
-        .button("Cast Specific Spell");
+        .body("Choose an spell level to apply.\nYou can have 3 spells on a weapon, 1 spell per piece of armor, and 1 spell per pickaxe")
+        .button("Weak Spell:\n§2§l5 Levels", "textures/items/iron_ingot");
+
+    const textures = [
+        "textures/items/diamond",
+        "textures/items/netherite_ingot",
+        "textures/items/obsidian_ingot",
+        "textures/items/dragonscale"
+    ]
+
+    for ( let i = 2; i <= bookSpellTier; ++i )
+    {
+        form.button( spellTierString( i ) + " Spell\n§2§l" + defaultRequiredLevels[ i - 1 ] + " Levels", textures[ i - 2 ] );
+    }
+
+        // .button("Minor Spell:\n§2§l10 Levels", "textures/items/iron_ingot")
+        // .button("Normal Spell:\n§2§l15 Levels", "textures/items/diamond")
+        // .button("Major Spell:\n§2§l20 Levels", "textures/items/obsidian_ingot")
+        // .button("Max Spell:\n§2§l25 Levels", "textures/items/dragonscale")
+    
+    form.button("Clear Last Spell:\n§2§l5 Levels")
+    .button("Clear Spell(s)")
+
+    const canCastSpecificSpell = bookSpellTier == MAX_SPELL;
+
+    if ( canCastSpecificSpell )
+        form.button("Cast Specific Spell");
 
     form.show( player ).then( response =>
     {
-        player.removeTag( "in_nec_menu" );
+        player.removeTag( "tench:in_nec_menu" );
 
-        if ( response.cancelled || response.selection == undefined )
+        if ( response.cancelled || response.selection == undefined || item == undefined )
             return;
 
-        if ( item == undefined )
-            return;
+        const requiredLevels = defaultRequiredLevels.slice( 0, bookSpellTier )
+            .concat( defaultRequiredLevels.slice( MAX_SPELL, defaultRequiredLevels.length - ( bookSpellTier == MAX_SPELL ? 0 : 1 ) ) );
 
         /** @type number */
         const selection = response.selection + 1;
-
-        const required_levels = [ 5, 10, 15, 20, 25, 5, 0, 0 ];
-
-        const required_level = required_levels[ selection - 1 ];
-
-        if ( player.level < required_level )
-        {
-            player.sendMessage("You do not have enough levels!");
-            return;
-        }
-
-        const spell_tier = selection;
-
-        const REMOVE_LAST = 6;
-        const REMOVE_LORE = 7;
-        const SPECIFIC    = 8;
 
         const itemType = getItemType( item );
 
@@ -252,7 +398,11 @@ export function showNecromancyTable( player, item )
             return;
         }
 
-        if ( selection != REMOVE_LAST && selection != REMOVE_LORE )
+        const CLEAR_LAST = requiredLevels.length - 3 + canCastSpecificSpell;
+        const CLEAR_LORE = CLEAR_LAST + 1; // 7;
+        const SPECIFIC = CLEAR_LORE + 1;
+
+        if ( selection != CLEAR_LAST && selection != CLEAR_LORE )
         {
             const maxSpellCount = getMaxSpellCountForItemType( itemType );
 
@@ -265,200 +415,50 @@ export function showNecromancyTable( player, item )
 
         if ( selection == SPECIFIC )
         {
-            if ( itemType == ItemType.BOOK )
-            {
-                print("Cannot select specific spell for a book", player);
-                return;
-            }
-
-            const infos = getAllSpellsForType( itemType );
-
-            const spellNames = infos.map( info => info.name );
-
-            const chooseSpell = new mcui.ModalFormData()
-                .title("Cast Specific Spell")
-                .dropdown("Choose a Spell", spellNames);
-
-            chooseSpell.show( player ).then( res => {
-
-                if ( res.canceled || res.formValues == null )
-                    return;
-
-                const values = res.formValues;
-
-                /** @type number */
-                const indexOfSpell = values[ 0 ];
-
-                const selectedInfo = infos[ indexOfSpell ];
-
-                const lore = item.getLore();
-
-                for ( let i = 0; i < lore.length; ++i )
-                {
-                    if ( lore[ i ].startsWith( selectedInfo.name ) )
-                    {
-                        print("This item already has this spell on it!", player);
-                        return;
-                    }
-                }
-
-                const levels = selectedInfo.hasTiers() ? selectedInfo.getSpellTiers() : [ 1 ];
-
-                for ( let i = 0; i < levels.length; ++i )
-                {
-                    let required_level = 0;
-
-                    if ( selectedInfo.hasTiers() )
-                    {
-                        required_level = required_levels[ selectedInfo.getCastTierOfSpellTier( i + 1 ) - 1 ];
-                    }
-                    else
-                    {
-                        required_level = required_levels[ selectedInfo.minimumCastTier - 1 ];
-                    }
-
-                    required_level = Math.round( required_level * 1.5 );
-
-                    required_level = Math.ceil( required_level / 5 ) * 5;
-
-                    levels[ i ] = "Spell Tier " + numberToRomanNumeral( levels[ i ] ) + " (§2§l" + required_level.toString() + " levels" + RESET + ")";
-                }
-
-                const levelSelection = new mcui.ModalFormData()
-                    .title("Select Spell Cast Tier")
-                    .dropdown("Spell Tier", levels );
-
-                levelSelection.show( player ).then( resp =>
-                {
-                    if ( resp.canceled || resp.formValues == null )
-                        return;
-
-                    /** @type number */
-                    const spellLevel = resp.formValues[ 0 ] + 1;
-
-                    let required_level = 0;
-
-                    if ( selectedInfo.hasTiers() )
-                    {
-                        required_level = required_levels[ selectedInfo.getCastTierOfSpellTier( spellLevel ) - 1 ];
-                    }
-                    else
-                    {
-                        required_level = required_levels[ selectedInfo.minimumCastTier - 1 ];
-                    }
-
-                    required_level = Math.round( required_level * 1.5 );
-
-                    required_level = Math.ceil( required_level / 5 ) * 5;
-
-                    if ( player.level < required_level )
-                    {
-                        print("You do not have enough levels! (need " + required_level.toString() + ")", player);
-                        return;
-                    }
-
-                    const finalSpell = selectedInfo.hasTiers() ? selectedInfo.name + numberToRomanNumeral( spellLevel ) : selectedInfo.name;
-
-                    lore.push( finalSpell );
-
-                    item.setLore( lore );
-
-                    player.getComponent("inventory").container.setItem( player.selectedSlotIndex, item );
-                    removeLevels( player, required_level );
-                });
-            });
-
+            print( "Can cast specific: " + canCastSpecificSpell );
+            castSpecificSpell( player, item, itemType );
             return;
         }
 
-        switch ( itemType )
+        const requiredLevel = requiredLevels[ selection - 1 ];
+
+        if ( player.level < requiredLevel )
         {
-        case ItemType.WEAPON:
+            player.sendMessage("You do not have enough levels! (Need " + requiredLevel + ")");
+            return;
+        }
+
+        const spellTier = selection;
+
+        if ( itemType == ItemType.BOOK )
         {
-            if ( selection == REMOVE_LORE ) 
+            if ( selection == CLEAR_LORE )
             {
-                clearLore( player, item );
+                player.getComponent( mc.EntityComponentTypes.Inventory ).container
+                    .setItem( player.selectedSlotIndex, new mc.ItemStack( "book", 1 ) );
                 return;
             }
-            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
+            if ( selection == CLEAR_LAST && !clearLastLore( player, item ) )
+                return;
+
+            const convertTierToBookTier = ['I', 'I', 'II', 'V', 'X'];
+            player.runCommandAsync("clear @s book 0 1");
+            player.runCommandAsync("function tier" + convertTierToBookTier[ spellTier - 1 ] );
             
-            else if ( selection < REMOVE_LAST && !addSpellToWeapon( player, item, spell_tier ) ) return;
-
-            removeLevels( player, required_level );
+            removeLevels( player, requiredLevel );
             return;
         }
-        case ItemType.ARMOR:
+
+        if ( selection == CLEAR_LORE )
         {
-            if ( selection == REMOVE_LORE )
-            {
-                clearLore( player, item );
-                return;
-            }
-            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
-
-            else if ( selection < REMOVE_LAST && !addSpellToArmor( player, item, spell_tier ) ) return;
-
-            removeLevels( player, required_level );
+            clearLore( player, item );
             return;
         }
-        case ItemType.BOW:
-        {
-            if ( selection === REMOVE_LORE )
-            {
-                clearLore( player, item );
-                return;
-            }
-            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
-            else if ( selection < REMOVE_LAST && !addSpellToBow( player, item, spell_tier ) ) return;
+        if ( selection == CLEAR_LAST && !clearLastLore( player, item ) )
+            return;
+        if ( selection < CLEAR_LAST && !addSpellToItem( player, item, itemType, spellTier ) )
+            return;
 
-            removeLevels( player, required_level );
-            return;
-        }
-        case ItemType.PICKAXE:
-        {
-            if ( selection === REMOVE_LORE )
-            {
-                clearLore( player, item );
-                return;
-            }
-            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
-            else if ( selection < REMOVE_LAST && !addSpellToPickaxe( player, item, spell_tier ) ) return;
-
-            removeLevels( player, required_level );
-            return;
-        }
-        case ItemType.BOOK:
-        {
-            if ( selection == REMOVE_LORE )
-            {
-                player.getComponent("inventory").container.setItem( player.selectedSlotIndex, new mc.ItemStack( "book", 1 ) );
-            }
-            else if ( selection == REMOVE_LAST && !clearLastLore( player, item ) ) return;
-            else
-            {
-                const convertTierToBookTier = ['I', 'I', 'II', 'V', 'X'];
-                player.runCommandAsync("clear @s book 0 1");
-                player.runCommandAsync("function tier" + convertTierToBookTier[ spell_tier - 1 ] );
-            }
-            
-            removeLevels( player, required_level );
-            return;
-        }
-        }
+        removeLevels( player, requiredLevel );
     });
-}
-
-/**
- * @param {mc.ItemStack} item 
- * @returns 
- */
-export function itemIsArmor( item )
-{
-    const type = item.typeId;
-    return type.includes( "chestp" ) || type.includes( "helm" ) || type.includes( "legg" ) || type.includes( "boots" );
-}
-
-export function itemIsNotArmor( item )
-{
-    return !itemIsArmor( item );
 }

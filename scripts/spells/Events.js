@@ -3,9 +3,9 @@ import * as mc from "@minecraft/server"
 export class WeaponEvent
 {
     /**
-     * @param {mc.Entity} target 
-     * @param {mc.Entity} source 
-     * @param {number} damage 
+     * @param { mc.Entity } target 
+     * @param { mc.Entity } source 
+     * @param { number } damage 
      */
     constructor( target, source, damage, sourceIsCorrupted, reflected = false )
     {
@@ -112,9 +112,9 @@ export class ProjectileHitBlockEvent
 export class BreakBlockEvent
 {
     /**
-     * @param {mc.Player} player 
-     * @param {mc.ItemStack} item 
-     * @param {mc.Block} block 
+     * @param { mc.Player } player
+     * @param { mc.ItemStack } item
+     * @param { mc.Block } block
      */
     constructor( player, item, block )
     {
@@ -122,7 +122,7 @@ export class BreakBlockEvent
         this.item = item;
         this.block = block;
 
-        const ench = item.getComponent("enchantable");
+        const ench = item.getComponent( mc.ItemComponentTypes.Enchantable );
 
         if ( ench == null )
         {
@@ -146,21 +146,21 @@ export class BreakBlockEvent
         }
     }
 
-    /** @type {mc.Player} */
+    /** @type { mc.Player } */
     player;
 
-    /** @type {mc.ItemStack} */
+    /** @type { mc.ItemStack } */
     item;
 
-    /** @type {number} */
+    /** @type { number } */
     itemFortuneLevel;
 
-    /** @type {boolean} */
+    /** @type { boolean } */
     itemHasSilkTouch;
 
-    /** @type {mc.Block} */
+    /** @type { mc.Block } */
     block;
 
-    /** @type {boolean} */
+    /** @type { boolean } */
     cancelBlockBreak = false;
 }

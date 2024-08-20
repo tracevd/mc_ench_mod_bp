@@ -1,9 +1,12 @@
 {
-	"format_version": "1.18.0",
+	"format_version": "1.20.30",
 	"minecraft:item": {
 		"description": {
 			"identifier": "tench:obsidian_boots",
-			"category": "equipment"
+			"menu_category": {
+				"category": "equipment",
+				"group": "itemGroup.name.boots"
+			}
 		},
 		"components": {
 			"minecraft:display_name": {
@@ -21,18 +24,11 @@
 					"max": 100
 				}
 			},
-			"minecraft:icon": {
-				"texture": "tench_obsidian_boots"
-			},
-			"minecraft:render_offsets": "boots",
-			"minecraft:armor": {
-				"protection": 5
-			},
+			"minecraft:icon": "tench_obsidian_boots",
 			"minecraft:wearable": {
-				"slot": "slot.armor.feet"
-			},
-			"minecraft:creative_category": {
-				"parent": "itemGroup.name.boots"
+				"slot": "slot.armor.feet",
+				"protection": 5,
+				"dispensable": true
 			},
 			"minecraft:repairable": {
 				"repair_items": [

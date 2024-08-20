@@ -16,9 +16,9 @@ export class ArmorSpells
     static #spells = new Map();
 
     /**
-     * @param {string} name 
-     * @param {(armorActivation, spellTier, outputString) => void} armorSpell 
-     * @param {boolean} isActivatedOnHit 
+     * @param { string } name 
+     * @param { (armorActivation, spellTier, outputString) => void } armorSpell 
+     * @param { boolean } isActivatedOnHit 
      */
     static addEffect( name, armorSpell )
     {
@@ -31,7 +31,7 @@ export class ArmorSpells
     }
 
     /**
-     * @param {string} name 
+     * @param { string } name 
      */
     static activateEffect( name, event, spellTier, outputString )
     {
@@ -56,16 +56,16 @@ import { print } from '../print.js';
 import { BowEffects } from './BowSpells.js';
 
 /**
- * @param {ArmorActivateEvent} event 
- * @param {number} spellTier 
- * @param {StringRef} outputString 
+ * @param { ArmorActivateEvent } event 
+ * @param { number } spellTier 
+ * @param { StringRef } outputString 
  */
 function reflect( event, spellTier, outputString )
 {
     if ( event.source == null )
         return;
 
-    /** @type {string[]} */
+    /** @type { string[] } */
     const reflectableSpells = event.reflectableSpells
 
     if ( reflectableSpells.length == 0 )
@@ -126,9 +126,9 @@ function reflect( event, spellTier, outputString )
 }
 
 /**
- * @param {ArmorActivateEvent} event 
- * @param {number} spellTier 
- * @param {StringRef} outputString 
+ * @param { ArmorActivateEvent } event 
+ * @param { number } spellTier 
+ * @param { StringRef } outputString 
  */
 function lastStand( event, spellTier, outputString )
 {
@@ -137,7 +137,7 @@ function lastStand( event, spellTier, outputString )
         return;
     }
 
-    const health = event.target.getComponent( "health" );
+    const health = event.target.getComponent( mc.EntityComponentTypes.Health );
 
     if ( health.currentValue < 5 )
     {
@@ -150,9 +150,9 @@ function lastStand( event, spellTier, outputString )
 }
 
 /**
- * @param {ArmorActivateEvent} event 
- * @param {number} spellTier 
- * @param {StringRef} outputString 
+ * @param { ArmorActivateEvent } event 
+ * @param { number } spellTier 
+ * @param { StringRef } outputString 
  */
 function magmaArmor( event, spellTier, outputString )
 {
@@ -168,7 +168,7 @@ function magmaArmor( event, spellTier, outputString )
         return;
     }
 
-    const onFire = event.source.getComponent("onfire");
+    const onFire = event.source.getComponent( mc.EntityComponentTypes.OnFire );
 
     if ( onFire != null )
     {
@@ -183,9 +183,9 @@ function magmaArmor( event, spellTier, outputString )
 }
 
 /**
- * @param {ArmorActivateEvent} event 
- * @param {number} spellTier 
- * @param {StringRef} outputString 
+ * @param { ArmorActivateEvent } event 
+ * @param { number } spellTier 
+ * @param { StringRef } outputString 
  */
 function push( event, spellTier, outputString )
 {
@@ -212,9 +212,9 @@ function push( event, spellTier, outputString )
 }
 
 /**
- * @param {ArmorActivateEvent} event 
- * @param {number} spellTier 
- * @param {StringRef} outputString 
+ * @param { ArmorActivateEvent } event 
+ * @param { number } spellTier 
+ * @param { StringRef } outputString 
  */
 function evasion( event, spellTier, outputString )
 {
@@ -223,7 +223,7 @@ function evasion( event, spellTier, outputString )
         return;
     }
 
-    const health = event.target.getComponent("health");
+    const health = event.target.getComponent( mc.EntityComponentTypes.Health );
 
     if ( health == null )
         return;
@@ -239,9 +239,9 @@ function evasion( event, spellTier, outputString )
 }
 
 /**
- * @param {ArmorActivateEvent} event 
- * @param {number} spellTier 
- * @param {StringRef} outputString 
+ * @param { ArmorActivateEvent } event 
+ * @param { number } spellTier 
+ * @param { StringRef } outputString 
  */
 function unbreakable( event, spellTier, outputString )
 {
@@ -289,7 +289,7 @@ class ArmorSpellAndSlot
  */
 function getEntityArmorSpells( entity )
 {
-    const equipment = entity.getComponent("equippable");
+    const equipment = entity.getComponent( mc.EntityComponentTypes.Equippable );
 
     if ( equipment == null )
         return [];

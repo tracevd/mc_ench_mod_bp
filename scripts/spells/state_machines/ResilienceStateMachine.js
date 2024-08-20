@@ -17,7 +17,12 @@ export class ResilienceStateMachine
      */
     update( player, currentTick, isCorrupted )
     {
+        const noResil = player.getEffect("health_boost") == null;
         player.addEffect( "health_boost", secondsToTicks( 15 ), { amplifier: this.tier - 1, showParticles: false } );
+        if ( noResil )
+        {
+            player.runCommandAsync("function regen");
+        }
     }
 
     remove( player )

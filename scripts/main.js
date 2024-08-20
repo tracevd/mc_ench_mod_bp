@@ -18,7 +18,7 @@ mc.system.beforeEvents.watchdogTerminate.subscribe( e =>
 
 mc.world.beforeEvents.worldInitialize.subscribe( e =>
 {    
-    state.initializeWorld( e.blockTypeRegistry, e.itemComponentRegistry );
+    state.initializeWorld( e.blockComponentRegistry, e.itemComponentRegistry );
 });
 
 mc.world.afterEvents.worldInitialize.subscribe( e =>
@@ -104,7 +104,6 @@ mc.world.afterEvents.entityHurt.subscribe( e =>
     {
         tryToRepairUnbreakableGear( e.damageSource.damagingEntity );
     }
-    updateHealthDisplay( e.hurtEntity );
 });
 
 mc.world.afterEvents.projectileHitBlock.subscribe( e =>
@@ -141,7 +140,7 @@ mc.world.afterEvents.playerSpawn.subscribe( e =>
     }
     else
     {
-        state.entityRespawned( e.player );
+        state.playerRespawned( e.player );
     }
 
     updateHealthDisplay( e.player );
@@ -149,15 +148,15 @@ mc.world.afterEvents.playerSpawn.subscribe( e =>
 
 mc.world.afterEvents.entityDie.subscribe( e =>
 {
-    if ( e.deadEntity instanceof mc.Player )
+    if ( e.deadEntity.typeId == "minecraft:player" )
     {
-        state.entityDied( e.deadEntity );   
+        state.playerDied( e.deadEntity );
     }
 });
 
 mc.world.beforeEvents.playerLeave.subscribe( e =>
 {
-    state.removeEntity( e.player );
+    state.removePlayer( e.player );
 });
 
 mc.world.afterEvents.itemReleaseUse.subscribe( e =>
@@ -180,20 +179,19 @@ mc.world.afterEvents.playerBreakBlock.subscribe( e =>
 {
     if ( e.itemStackBeforeBreak != null )
     {
-        const dur = e.itemStackBeforeBreak.getComponent("durability");
+        const dur = e.itemStackBeforeBreak.getComponent( mc.ItemComponentTypes.Durability );
 
-        if ( dur != null )
+        if ( dur != null && dur.damage > 0 )
         {
-            if ( dur.damage > 0 )
-            {
-                dur.damage = 0;
-                const equip = e.player.getComponent("equippable");
-                equip.setEquipment( mc.EquipmentSlot.Mainhand, e.itemStackBeforeBreak );
-            }
+            dur.damage = 0;
+            const equip = e.player.getComponent( mc.EntityComponentTypes.Equippable );
+            equip.setEquipment( mc.EquipmentSlot.Mainhand, e.itemStackBeforeBreak );
         }
     }
 
-    if ( !e.brokenBlockPermutation.type.id.includes('lucky') )
+    io.print( e.brokenBlockPermutation.type.id );
+
+    if ( e.brokenBlockPermutation.type.id != "tench:lucky_block" )
         return;
 
     breakLuckyBlock( e.player, e.block.location );
@@ -207,13 +205,14 @@ mc.world.beforeEvents.playerBreakBlock.subscribe( e =>
     }
 })
 
-import { runCommand } from "./commands";
+import { runCommand } from "./commands/commands.js"
 
-mc.world.beforeEvents.chatSend.subscribe( e =>
+/**
+ * @param { mc.ChatSendBeforeEvent } e 
+ */
+function runCommandIfStartsWithDot( e )
 {
-    const message = e.message;
-
-    if ( !message.startsWith('.') )
+    if ( !e.message.startsWith('.') )
     {
         return;
     }
@@ -221,7 +220,30 @@ mc.world.beforeEvents.chatSend.subscribe( e =>
     e.cancel = true;
 
     runCommand( e.sender, e.message ); 
-});
+}
+
+mc.world.beforeEvents.chatSend.subscribe( runCommandIfStartsWithDot );
+
+/**
+ * @param { mc.EntitySpawnAfterEvent } e 
+ */
+function increaseHostileMobSpawns( e )
+{
+    if ( e.cause != mc.EntityInitializationCause.Spawned )
+        return;
+    if ( !e.entity.matches({ families: ["monster"] }) )
+        return;
+    if ( e.entity.hasTag( "tench:mob_lock" ) )
+        return;
+
+    if ( Math.random() < 0.7 )
+        return;
+
+    const newEntity = e.entity.dimension.spawnEntity( e.entity.typeId, e.entity.location );
+    newEntity.addTag( "tench:mob_lock" );
+}
+
+mc.world.afterEvents.entitySpawn.subscribe( increaseHostileMobSpawns );
 
 // Entity teleporter
 mc.world.afterEvents.itemUse.subscribe( e =>

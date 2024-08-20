@@ -1,11 +1,11 @@
 import * as mc from "@minecraft/server";
 
-import { Entity, Player, system } from "@minecraft/server";
+import { Player, system } from "@minecraft/server";
 
-import { CORRUPTED_TAG } from "./spells.js";
+import { CORRUPTED_TAG, SPELL_COOLDOWN_TAG_PREFIX } from "./spells.js";
 
 /**
- * @param {number} seconds 
+ * @param { number } seconds 
  */
 export function secondsToTicks( seconds )
 {
@@ -46,7 +46,7 @@ export function numberToRomanNumeral( num )
 }
 
 /**
- * @param {string} spell 
+ * @param { string } spell 
  */
 export function getBaseSpellAndTier( spell )
 {
@@ -59,7 +59,7 @@ export function getBaseSpellAndTier( spell )
 }
 
 /**
- * @param {string} spell 
+ * @param { string } spell 
  */
 export function getBaseSpell( spell )
 {
@@ -90,8 +90,8 @@ export function loreIncludes( lore, spell )
 }
 
 /**
- * @param {Player} player 
- * @returns {boolean}
+ * @param { Player } player 
+ * @returns { boolean }
  */
 export function isCorrupted( player )
 {
@@ -108,7 +108,7 @@ export function isCorrupted( player )
  */
 export function startCoolDown( player, type, seconds )
 {
-    const cooldownTag = "cooldown:" + type
+    const cooldownTag = SPELL_COOLDOWN_TAG_PREFIX + type
     player.addTag( cooldownTag );
     system.runTimeout( () =>
     {
@@ -120,17 +120,16 @@ export function startCoolDown( player, type, seconds )
 }
 
 /**
- * @param {Player} player 
- * @param {string} type 
- * @returns {boolean}
+ * @param { Player } player
+ * @param { string } type
  */
 export function coolDownHasFinished( player, type )
 {
-    return !( player.hasTag( "cooldown:" + type ) );
+    return !( player.hasTag( SPELL_COOLDOWN_TAG_PREFIX + type ) );
 }
 
 /**
- * @param {number} num 
+ * @param { number } num 
  */
 export function roundToNearestTenth( num )
 {
@@ -139,19 +138,22 @@ export function roundToNearestTenth( num )
 
 /**
  * Apply damage to an entity
- * @param {mc.Entity} entity 
- * @param {number} damage 
+ * @param { mc.Entity } entity 
+ * @param { number } damage 
  */
-export function applyDamage( entity, damage, sourceOfDamage, isProjectile = false )
+export function applyDamage( entity, damage, sourceOfDamage )
 {
-    const health = entity.getComponent("health");
+    if ( !entity.isValid() )
+        return;
+
+    const health = entity.getComponent( mc.EntityComponentTypes.Health );
 
     health.setCurrentValue( Math.max( 0.01, health.currentValue - damage ) );
 
     entity.applyDamage(
         0.1,
         {
-            cause: isProjectile ? mc.EntityDamageCause.projectile : mc.EntityDamageCause.entityAttack,
+            cause: mc.EntityDamageCause.entityAttack,
             damagingEntity: sourceOfDamage
         }
     )

@@ -6,6 +6,8 @@ import * as util from "./spells/util.js";
 
 import { showNecromancyTable } from "./necromancy_table.js";
 
+const DEAD_PLAYER_TAG = "tench:dead";
+
 /**
  * @param { mc.BlockComponentRegistry } blockComponentRegistry 
  * @param { mc.ItemComponentRegistry }  itemComponentRegistry 
@@ -19,7 +21,7 @@ export function initializeWorld( blockComponentRegistry, itemComponentRegistry )
             if ( !e.player )
                 return;
 
-            const equipment = e.player.getComponent("equippable");
+            const equipment = e.player.getComponent( mc.EntityComponentTypes.Equippable );
 
             if ( !equipment )
             {
@@ -35,7 +37,7 @@ export function initializeWorld( blockComponentRegistry, itemComponentRegistry )
                 return;
             }
 
-            showNecromancyTable( e.player, item );
+            showNecromancyTable( e.player, item, e.block );
         }
     });
 }
@@ -70,31 +72,31 @@ const armorSlots = [
     mc.EquipmentSlot.Feet
 ];
 
-function getEntityArmorKey( entity, armorSlot )
+function getPlayerArmorKey( player, armorSlot )
 {
-    return `${entity.id}_${armorSlot}`;
+    return `${player.id}_${armorSlot}`;
 }
 
 /**
- * @param { mc.Entity } entity
+ * @param { mc.Player } player
  */
-export function removeEntity( entity )
+export function removePlayer( player )
 {
-    if ( entity == null )
+    if ( player == null )
         return;
 
     mc.system.run( () =>
     {
         for ( let i = 0; i < armorSlots.length; ++i )
         {
-            const key = getEntityArmorKey( entity, armorSlots[ i ] );
+            const key = getPlayerArmorKey( player, armorSlots[ i ] );
             const effect = armorEffects.get( key );
     
             if ( effect != null )
             {
                 try
                 {
-                    effect.remove( entity );
+                    effect.remove( player );
                 }
                 catch ( e )
                 {
@@ -106,39 +108,47 @@ export function removeEntity( entity )
         }
     });
 
-    clearTags( entity );
+    clearTags( player );
 }
 
 /**
- * @param { mc.Entity } entity
+ * @param { mc.Player } player
  */
-export function entityDied( entity )
+export function playerDied( player )
 {
-    if ( entity == null )
+    if ( player == null )
         return;
 
-    entity.addTag( "tench_dead" );
+    const tags = player.getTags();
+
+    for ( let i = 0; i < tags.length; ++i )
+    {
+        if ( tags[ i ].startsWith( spells.SPELL_COOLDOWN_TAG_PREFIX ) )
+            player.removeTag( tags[ i ] );
+    }
+
+    player.addTag( DEAD_PLAYER_TAG );
 }
 
 /**
- * @param { mc.Entity } entity
+ * @param { mc.Player } player
  */
-export function entityRespawned( entity )
+export function playerRespawned( player )
 {
-    if ( entity == null )
+    if ( player == null )
         return;
 
-    entity.removeTag("tench_dead");
+    player.removeTag( DEAD_PLAYER_TAG );
 }
 
 /**
- * @param { mc.Entity } entity
+ * @param { mc.Player } player
  * @param { number } currentTick
  * @param { boolean } isCorrupted
  */
-function updateEntity( entity, currentTick, isCorrupted )
+function updatePlayer( player, currentTick, isCorrupted )
 {
-    const equipment = entity.getComponent("equippable");
+    const equipment = player.getComponent( mc.EntityComponentTypes.Equippable );
 
     const armor = [
         equipment.getEquipment( mc.EquipmentSlot.Head ),
@@ -148,10 +158,10 @@ function updateEntity( entity, currentTick, isCorrupted )
     ];
 
     const effects = [
-        armorEffects.get( getEntityArmorKey( entity, mc.EquipmentSlot.Head ) ),
-        armorEffects.get( getEntityArmorKey( entity, mc.EquipmentSlot.Chest ) ),
-        armorEffects.get( getEntityArmorKey( entity, mc.EquipmentSlot.Legs ) ),
-        armorEffects.get( getEntityArmorKey( entity, mc.EquipmentSlot.Feet ) )
+        armorEffects.get( getPlayerArmorKey( player, mc.EquipmentSlot.Head ) ),
+        armorEffects.get( getPlayerArmorKey( player, mc.EquipmentSlot.Chest ) ),
+        armorEffects.get( getPlayerArmorKey( player, mc.EquipmentSlot.Legs ) ),
+        armorEffects.get( getPlayerArmorKey( player, mc.EquipmentSlot.Feet ) )
     ];
 
     // remove spells that aren't used anymore or are different
@@ -171,7 +181,7 @@ function updateEntity( entity, currentTick, isCorrupted )
         {
             try
             {
-                effects[ i ].remove( entity );
+                effects[ i ].remove( player );
             }
             catch ( e )
             {
@@ -179,7 +189,7 @@ function updateEntity( entity, currentTick, isCorrupted )
             }
             
             effects[ i ] = null;
-            armorEffects.delete( getEntityArmorKey( entity, armorSlots[ i ] ) );
+            armorEffects.delete( getPlayerArmorKey( player, armorSlots[ i ] ) );
         }
     }
 
@@ -203,14 +213,7 @@ function updateEntity( entity, currentTick, isCorrupted )
 
         const spell = util.getBaseSpell( currentSpells[ i ] );
 
-        if ( spellCount.has( spell ) )
-        {
-            spellCount.set( spell, spellCount.get( spell ) + 1 );
-        }
-        else
-        {
-            spellCount.set( spell, 1 );
-        }
+        spellCount.set( spell, ( spellCount.get( spell ) || 0 ) + 1 );
     }
 
     for ( const pair of spellCount )
@@ -218,8 +221,8 @@ function updateEntity( entity, currentTick, isCorrupted )
         if ( pair[ 1 ] == 1 )
             continue;
         
-        io.print( "Found " + pair[ 1 ] + " occurrences of '" + pair[ 0 ].trimEnd() + spells.RESET + "'", entity );
-        io.print( "Continuous effect spells that have more than one occurrence are ignored", entity );
+        io.print( "Found " + pair[ 1 ] + " occurrences of '" + pair[ 0 ].trimEnd() + spells.RESET + "'", player );
+        io.print( "Continuous effect spells that have more than one occurrence are ignored", player );
     }
 
     // update or create all machines
@@ -233,7 +236,7 @@ function updateEntity( entity, currentTick, isCorrupted )
                 continue;
             }
 
-            effects[ i ].update( entity, currentTick, isCorrupted );
+            effects[ i ].update( player, currentTick, isCorrupted );
             continue;
         }
 
@@ -254,14 +257,14 @@ function updateEntity( entity, currentTick, isCorrupted )
                 continue;
             }
 
-            armorEffects.set( getEntityArmorKey( entity, armorSlots[ i ] ), stateMachine );
+            armorEffects.set( getPlayerArmorKey( player, armorSlots[ i ] ), stateMachine );
         }
     }
 
     /// not currently working on console
-    // if ( entity instanceof mc.Player )
+    // if ( player instanceof mc.Player )
     // {
-    //     const cooldowns = entity.getTags()
+    //     const cooldowns = player.getTags()
     //         .filter((e) => e.startsWith("cooldown:"))
     //         .map(e => e.replace("cooldown:", ""))
     //         .join('\n');
@@ -276,7 +279,7 @@ function updateEntity( entity, currentTick, isCorrupted )
     //     {
     //         message += cooldowns;
     //     }
-    //     entity.onScreenDisplay.setTitle("tench:spell_cooldowns" + message);
+    //     player.onScreenDisplay.setTitle("tench:spell_cooldowns" + message);
     // }
 }
 
@@ -285,7 +288,7 @@ function updateEntity( entity, currentTick, isCorrupted )
  */
 export function isDead( player )
 {
-    return player.hasTag("tench_dead");
+    return player.hasTag( DEAD_PLAYER_TAG );
 }
 
 export function runPlayerUpdateLoop()
@@ -303,7 +306,7 @@ export function runPlayerUpdateLoop()
                     continue;
                 }
 
-                updateEntity( players[ i ], mc.system.currentTick, util.isCorrupted( players[ i ] ) );
+                updatePlayer( players[ i ], mc.system.currentTick, util.isCorrupted( players[ i ] ) );
             }
     
             // const end = Date.now();

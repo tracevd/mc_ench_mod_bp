@@ -1,26 +1,25 @@
-import { numberToRomanNumeral, getBaseSpellAndTier } from "./util";
+import { numberToRomanNumeral } from "./util";
 
 import * as constants from "./spell_constants.js";
 
 export const RESET = constants.RESET;
+export const SPELL_COOLDOWN_TAG_PREFIX = "tench:spell_cooldown_";
 
 export class SpellInfo
 {
     /**
-     * @param {string} name 
-     * @param {number[]} tiers 
-     * @param {number} minimumCastTier 
+     * @param { string } name 
+     * @param { number[] } tiers 
+     * @param { number } minimumCastTier 
      */
     constructor( name, tiers )
     {
         this.name = name;
         this.#tiers = tiers;
-        this.minimumCastTier = tiers.lastIndexOf( 0 ) + 2;
-    }
-
-    static dummy( name )
-    {
-        return new SpellInfo( name, [] );
+        if ( tiers )
+            this.minimumCastTier = tiers.lastIndexOf( 0 ) + 2;
+        else
+            this.minimumCastTier = 1;
     }
 
     /** @type { string } */
@@ -68,6 +67,8 @@ export class SpellInfo
 
     getSpellTiers()
     {
+        if ( this.#tiers == null )
+            return [ 1 ];
         const last1 = this.#tiers.lastIndexOf( 1 );
         return this.#tiers.slice( last1 );
     }
@@ -84,19 +85,22 @@ export class SpellInfo
 }
 
 /**
- * @param {SpellInfo[]} spellArray 
+ * @param { SpellInfo[] } spellArray 
  */
 function getTotalWeight( spellArray )
 {
-    return spellArray.reduce( (prev, curr) => {
-            return prev.setWeight( prev.getWeight() + curr.getWeight() );
-        }, SpellInfo.dummy("").setWeight( 0 )  ).getWeight();
+    let weight = 0;
+    for ( let i=  0; i < spellArray.length; ++i )
+    {
+        weight += spellArray[ i ].getWeight();
+    }
+    return weight;
 }
 
 /**
- * @param {SpellInfo[]} table 
- * @param {string[]} alreadyHas
- * @param {number} castTier 
+ * @param { SpellInfo[] } table 
+ * @param { string[] } alreadyHas
+ * @param { number } castTier 
  */
 function getRandomSpell( table, alreadyHas, castTier, totalWeight )
 {
@@ -183,8 +187,8 @@ const weaponSpells = [
 const totalWeaponSpellWeight = getTotalWeight( weaponSpells );
 
 /**
- * @param {string[]} alreadyHas 
- * @param {number} spellTier 
+ * @param { string[] } alreadyHas 
+ * @param { number } spellTier 
  * @returns 
  */
 export function getRandomWeaponSpell( alreadyHas, spellTier )
@@ -247,8 +251,8 @@ const armorSpells = [
 const totalArmorSpellWeight = getTotalWeight( armorSpells );
 
 /**
- * @param {string[]} alreadyHas 
- * @param {number} spellTier 
+ * @param { string[] } alreadyHas 
+ * @param { number } spellTier 
  */
 export function getRandomArmorSpell( spellTier )
 {
@@ -292,8 +296,8 @@ const bowSpells = [
 const totalBowSpellWeight = getTotalWeight( bowSpells );
 
 /**
- * @param {string[]} alreadyHas 
- * @param {number} spellTier 
+ * @param { string[] } alreadyHas 
+ * @param { number } spellTier 
  */
 export function getRandomBowSpell( alreadyHas, spellTier )
 {
@@ -316,19 +320,18 @@ export const VEIN_MINER = `${constants.RESET}${constants.POSITIVE}Vein Miner `;
 export const EXCAVATE   = `${constants.RESET}${constants.POSITIVE}Excavate `;
 
 const pickaxeSpells = [
-    new SpellInfo( VEIN_MINER, [1, 1, 1, 1, 1] ).setWeight( 2 ),
+    new SpellInfo( VEIN_MINER, [1, 1, 1, 1, 1] ).setWeight( 3 ),
     new SpellInfo( EXCAVATE,   [0, 1, 1, 2, 3] ).setWeight( 1 ),
 ]
 
 const totalPickaxeSpellWeight = getTotalWeight( pickaxeSpells );
 
 /**
- * @param {string[]} alreadyHas 
- * @param {number} spellTier 
+ * @param { number } spellTier 
  */
-export function getRandomPickaxeSpell( alreadyHas, spellTier )
+export function getRandomPickaxeSpell( spellTier )
 {
-    return getRandomSpell( pickaxeSpells, alreadyHas, spellTier, totalPickaxeSpellWeight );
+    return getRandomSpell( pickaxeSpells, [], spellTier, totalPickaxeSpellWeight );
 }
 
 export function getAllPickaxeSpells()
@@ -336,4 +339,4 @@ export function getAllPickaxeSpells()
     return pickaxeSpells;
 }
 
-export const CORRUPTED_TAG = 'corrupted';
+export const CORRUPTED_TAG = 'tench:corrupted';

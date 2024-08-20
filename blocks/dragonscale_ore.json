@@ -15,17 +15,17 @@
         "minecraft:destructible_by_mining": {
             "seconds_to_destroy": 3
         },
-        "minecraft:loot": "loot_tables/blocks/dragonscale_ore.json",
-        "minecraft:on_player_destroyed": {
-          "event": "tench:give_scale_ore_xp"
-        }
+        "minecraft:loot": "loot_tables/blocks/dragonscale_ore.json"
+        // "minecraft:on_player_destroyed": {
+        //   "event": "tench:give_scale_ore_xp"
+        // }
       },
       "events": {
-        "tench:give_scale_ore_xp": {
-          "run_command": {
-            "command": [ "structure load tench:dragonscale_ore_xp ~ ~ ~" ]
-          }
-        }
+        // "tench:give_scale_ore_xp": {
+        //   "run_command": {
+        //     "command": [ "structure load tench:dragonscale_ore_xp ~ ~ ~" ]
+        //   }
+        // }
       }
     }
   }

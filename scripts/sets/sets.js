@@ -2,51 +2,162 @@ import * as mc from '@minecraft/server';
 
 import * as spells from '../spells/spells.js';
 
-
-export const HelmetId     = 0;
-export const ChestplateId = 1;
-export const LeggingsId   = 2;
-export const BootsId      = 3;
-export const SwordId      = 4;
-
-export class ArmorSet
+export class LoadType
 {
-    constructor( name, items )
-    {
-        this.name = name;
-        this.items = items;
-    }
-
-    /** @type {string} */
-    name;
-    /** @type {ItemStack[]} */
-    items = [];
+    static get Structure() { return 0; }
+    static get Generated() { return 1; }
 }
 
-export class ArmorSets
+export class SetPiece
 {
-    /** @type ArmorSet[] */
-    static sets = [];
+    /**
+     * @param { string } name 
+     * @param { mc.ItemStack | string } item 
+     * @param { LoadType } loadType 
+     */
+    constructor( name, item, loadType, weight )
+    {
+        this.#name = name;
+        this.#item = item;
+        this.#loadType = loadType;
+        this.weight = weight;
+    }
+
+    /**
+     * @param { mc.Vector3 } location 
+     * @param { mc.Dimension } dimension 
+     */
+    loadAt( location, dimension )
+    {
+        if ( this.#loadType == LoadType.Generated )
+        {
+            dimension.spawnItem( this.#item, location );
+        }
+        else if ( this.#loadType == LoadType.Structure )
+        {
+            dimension.runCommandAsync( "structure load " + this.#item + ` ${location.x} ${location.y} ${location.z}` );
+        }
+        else
+        {
+            throw new Error("Unreconized load type");
+        }
+    }
+
+    get name() { return this.#name; }
+
+    /** @type { string } */
+    #name;
+
+    /** @type { mc.ItemStack | string } */
+    #item;
+
+    /** @type { number } */
+    #loadType;
+
+    /** @type { number } */
+    weight;
 }
 
 /**
- * @param {mc.ItemStack} item 
- * @param {mc.Enchantment[]} enchantments 
+ * @type { () => SetPiece }
+ */
+let getRandomSetPiece;
+
+export class SetPieces
+{
+    /** @type { SetPiece[] } */
+    static items = [];
+
+    /**
+     * Returns all pieces that include the text contained in name
+     * @param { string } name 
+     */
+    static getPiecesByName( name )
+    {
+        return this.items.filter( e => e.name.toLowerCase().includes( name ) );
+    }
+
+    static getRandom()
+    {
+        return getRandomSetPiece();
+    }
+}
+
+export class SetItemId
+{
+    static get Helmet() { return 0; }
+    static get Chestplate() { return 1; }
+    static get Leggings() { return 2; }
+    static get Boots() { return 3; }
+    static get Sword() { return 4; }
+    static get Bow() { return 5; }
+}
+
+export class ItemSet
+{
+    constructor( name, startIdx, endIdx )
+    {
+        this.name = name;
+        this.#startIdx = startIdx;
+        this.#endIdx = endIdx;
+    }
+
+    /** @type { string } */
+    name;
+
+    #startIdx = 0;
+    #endIdx = 0;
+
+    /** @type { SetPiece[] } */
+    get items() { return SetPieces.items.slice( this.#startIdx, this.#endIdx ); };
+
+    /**
+     * 
+     * @param {} slot 
+     */
+    getPiece( slot )
+    {
+        if ( slot >= this.#endIdx - this.#startIdx )
+            return null;
+        return SetPieces.items[ this.#startIdx + slot ];
+    }
+}
+
+export class ItemSets
+{
+    /** @type ItemSet[] */
+    static sets = [];
+
+    static getSetsByName( name )
+    {
+        return this.sets.filter( e => e.name.toLowerCase().includes( name ) );
+    }
+}
+
+/**
+ * @param { mc.ItemStack } item 
+ * @param { mc.Enchantment[] } enchantments 
  */
 function addEnchantments( item, enchantments )
 {
-    const enchants = item.getComponent("enchantable");
+    const enchants = item.getComponent( mc.ItemComponentTypes.Enchantable );
+
+    if ( enchants == null )
+    {
+        throw new Error("No enchantment component!");
+    }
 
     enchants.addEnchantments( enchantments );
 }
 
 /**
- * @param {string} type 
- * @param {string} displayname 
- * @param {mc.Enchantment[] | null} enchants 
- * @param {string[] | null} spells 
+ * @param { string } type 
+ * @param { string } displayname 
+ * @param { number } weight
+ * @param { mc.Enchantment[] | null } enchants 
+ * @param { string[] | null } spells 
  */
-function createItem( type, displayname, enchants, spells )
+function createGeneratedItem( type, displayname, weight, enchants, spells )
 {
     const item = new mc.ItemStack( type );
 
@@ -62,46 +173,63 @@ function createItem( type, displayname, enchants, spells )
         item.setLore( spells );
     }
 
-    return item;
+    const idx = SetPieces.items.push( new SetPiece( displayname, item, LoadType.Generated, weight ) ) - 1;
+    return SetPieces.items[ idx ];
 }
 
 /**
- * @param {string} name 
- * @param {number} level 
- * @returns {mc.Enchantment}
+ * @param { string } name 
+ * @param { string } structureName
+ * @param { number } weight
+ */
+function createStructureItem( name, structureName, weight )
+{
+    const idx = SetPieces.items.push( new SetPiece( name, structureName, LoadType.Structure, weight ) ) - 1;
+    return SetPieces.items[ idx ];
+}
+
+/**
+ * @param { string } name 
+ * @param { number } level 
+ * @returns { mc.Enchantment }
  */
 function createEnchantment( name, level )
 {
     return { type: mc.EnchantmentTypes.get( name ), level: level };
 }
 
+/**
+ * @param { string } name 
+ * @param { SetPiece[] } items 
+ */
 function createSet( name, items )
 {
-    ArmorSets.sets.push( new ArmorSet( name, items ) );
+    const startIdx = SetPieces.items.length - items.length;
+    ItemSets.sets.push( new ItemSet( name, startIdx, startIdx + items.length ) );
 }
 
 createSet( "Soldier", [
-    createItem("iron_helmet", "Soldier's Helmet",
+    createGeneratedItem("iron_helmet", "Soldier's Helmet", 10,
     [
         createEnchantment("protection", 2),
         createEnchantment("unbreaking", 1)
     ]),
-    createItem("iron_chestplate", "Soldier's Helmet",
+    createGeneratedItem("iron_chestplate", "Soldier's Helmet", 10,
     [
         createEnchantment("protection", 2),
         createEnchantment("unbreaking", 1)
     ]),
-    createItem("iron_leggings", "Soldier's Leggings",
+    createGeneratedItem("iron_leggings", "Soldier's Leggings", 10,
     [
         createEnchantment("protection", 2),
         createEnchantment("unbreaking", 1)
     ]),
-    createItem("iron_boots", "Soldier's Boots",
+    createGeneratedItem("iron_boots", "Soldier's Boots", 10,
     [
         createEnchantment("protection", 2),
         createEnchantment("unbreaking", 1)
     ]),
-    createItem("iron_sword", "Soldier's Sword",
+    createGeneratedItem("iron_sword", "Soldier's Sword", 10,
     [
         createEnchantment("sharpness", 3),
         createEnchantment("unbreaking", 1)
@@ -111,14 +239,14 @@ createSet( "Soldier", [
     ])
 ]);
 
-createSet( "King's Guard",
+createSet( "Royal Guard",
 [
-    createItem("diamond_helmet", "King's Guard Helmet",
+    createGeneratedItem("diamond_helmet", "Royal Guard Helmet", 9,
     [
         createEnchantment("protection", 3),
         createEnchantment("unbreaking", 2)
     ]),
-    createItem("diamond_chestplate", "King's Guard Chestplate",
+    createGeneratedItem("diamond_chestplate", "Royal Guard Chestplate", 9,
     [
         createEnchantment("protection", 3),
         createEnchantment("thorns", 2),
@@ -127,7 +255,7 @@ createSet( "King's Guard",
     [
         spells.RESILIENCE + "I"
     ]),
-    createItem("diamond_leggings", "King's Guard Leggings",
+    createGeneratedItem("diamond_leggings", "Royal Guard Leggings", 9,
     [
         createEnchantment("protection", 3),
         createEnchantment("unbreaking", 2)
@@ -135,12 +263,12 @@ createSet( "King's Guard",
     [
         spells.IMMUNITY + "II"
     ]),
-    createItem("diamond_boots", "King's Guard Boots",
+    createGeneratedItem("diamond_boots", "Royal Guard Boots", 9,
     [
         createEnchantment("protection", 3),
         createEnchantment("unbreaking", 2)
     ]),
-    createItem("diamond_sword", "King's Guard Sword",
+    createGeneratedItem("diamond_sword", "Royal Guard Sword", 9,
     [
         createEnchantment("sharpness", 4),
         createEnchantment("knockback", 1),
@@ -154,7 +282,7 @@ createSet( "King's Guard",
 
 createSet( "King",
 [
-    createItem("tench:obsidian_helmet", "King's Helmet",
+    createGeneratedItem("tench:obsidian_helmet", "King's Helmet", 8,
     [
         createEnchantment("protection", 4),
         createEnchantment("unbreaking", 3)
@@ -162,7 +290,7 @@ createSet( "King",
     [
         spells.INTIMIDATION + "III"
     ]),
-    createItem("tench:obsidian_chestplate", "King's Chestplate",
+    createGeneratedItem("tench:obsidian_chestplate", "King's Chestplate", 8,
     [
         createEnchantment("protection", 4),
         createEnchantment("thorns", 3),
@@ -171,7 +299,7 @@ createSet( "King",
     [
         spells.RESILIENCE + "II"
     ]),
-    createItem("tench:obsidian_leggings", "King's Leggings",
+    createGeneratedItem("tench:obsidian_leggings", "King's Leggings", 8,
     [
         createEnchantment("protection", 4),
         createEnchantment("thorns", 3),
@@ -180,7 +308,7 @@ createSet( "King",
     [
         spells.LASTSTAND + "I"
     ]),
-    createItem("tench:obsidian_boots", "King's Boots",
+    createGeneratedItem("tench:obsidian_boots", "King's Boots", 8,
     [
         createEnchantment("protection", 4),
         createEnchantment("feather_falling", 4),
@@ -189,7 +317,7 @@ createSet( "King",
     [
         spells.EXTINGUISH + "II"
     ]),
-    createItem("tench:obsidian_sword", "King's Sword",
+    createGeneratedItem("tench:obsidian_sword", "King's Sword", 8,
     [
         createEnchantment("sharpness", 5),
         createEnchantment("fire_aspect", 2),
@@ -202,3 +330,58 @@ createSet( "King",
         spells.LIFESTEAL + "II"
     ])
 ]);
+
+createSet("Dragon Slayer", [
+    createStructureItem("Dragon Slayer Helmet", "tench:DragonSlayerHelmet", 1),
+    createStructureItem("Dragon Slayer Chestplate", "tench:DragonSlayerChest", 1),
+    createStructureItem("Dragon Slayer Leggings", "tench:DragonSlayerLegs", 1),
+    createStructureItem("Dragon Slayer Boots", "tench:DragonSlayerBoots", 1),
+    createStructureItem("Dragon Slayer Sword", "tench:DragonSlayerSword", 1),
+    createStructureItem("Dragon Slayer Bow", "tench:DragonSlayerBow", 1)
+]);
+
+createStructureItem("Pounder", "tench:Pounder", 7);
+createStructureItem("The Drill", "tench:TheDrill", 7);
+createStructureItem("Brisingr", "tench:Brisingr", 6);
+createStructureItem("Dragon Wings", "tench:DragonWings", 4);
+
+createGeneratedItem("tench:obsidian_pickaxe", "Bane of Ores", 14,
+[
+    createEnchantment("efficiency", 5),
+    createEnchantment("fortune", 3),
+    createEnchantment("unbreaking", 3),
+    createEnchantment("mending", 1)
+],
+[
+    spells.VEIN_MINER + "I",
+    spells.UNBREAKABLE
+]);
+
+const totalWeight = ( () => {
+
+    let weight = 0;
+    for ( let i = 0; i < SetPieces.items.length; ++i )
+    {
+        weight += SetPieces.items[ i ].weight;
+    }
+    return weight;
+} )();
+
+getRandomSetPiece = () =>
+{
+    let rand = Math.round( Math.random() * ( totalWeight - 1 ) );
+
+    let i = 0;
+
+    for ( ; i < SetPieces.items.length; ++i )
+    {
+        rand -= SetPieces.items[ i ].weight;
+
+        if ( rand <= 0 )
+            break;
+    }
+
+    i = Math.min( i, SetPieces.items.length - 1 );
+
+    return SetPieces.items[ i ];
+}
